@@ -18,6 +18,21 @@ One-time per user per machine. `feature-dev` provides the `code-reviewer` subage
 
 Subsequent sessions refresh plugins automatically.
 
+## Reviewer procedure
+
+Triggered by the Stop hook when the session modified substantive files and no fresh `.decode-reviewer-clean` marker exists. Steps, in order:
+
+1. Run `git diff HEAD` via Bash.
+2. Dispatch `feature-dev:code-reviewer` via the Agent tool. Pass the diff as context. Instruct: review only the changes, target latency under 90 seconds, report only blocking issues (confidence ≥ 80).
+3. When the reviewer returns:
+   - **No blocking issues** → run `git rev-parse HEAD`, then Write `.decode-reviewer-clean` with exactly one line: `<HEAD-SHA> <ISO-8601-UTC-timestamp>`.
+   - **Blocking issues** → Write `.decode-reviewer-findings.md` with the list. Do NOT write `.decode-reviewer-clean`.
+4. Return.
+
+If the `feature-dev` plugin is not installed, stop and ask the user to run `/plugin install feature-dev@claude-plugins-official`.
+
+The `commit-msg` git hook blocks commits without a fresh marker unless the commit message contains `[override-reviewer: <reason>]`. Overrides are visible forever in `git log --grep="override-reviewer"`.
+
 ## DECODE base rules
 
 This repo enforces DECODE's Claude Code standards. The full rule catalog lives at https://github.com/implicitdiagnosticsandsolutions/decode-claude-wiki/tree/main/docs/rules — rules are loaded by reference.
