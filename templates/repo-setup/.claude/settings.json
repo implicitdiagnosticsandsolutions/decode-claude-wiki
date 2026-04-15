@@ -11,12 +11,7 @@
   "enabledPlugins": {
     "decode-base@decode": true
   },
-  "permissions": {
-    "deny": [
-      "Bash(rm -rf /*)",
-      "Bash(rm -rf ~*)"
-    ]
-  },
+  "permissions": {},
   "hooks": {
     "PreToolUse": [
       {
