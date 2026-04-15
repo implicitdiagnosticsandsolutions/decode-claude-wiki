@@ -42,7 +42,7 @@ if ! echo "$MODIFIED" | grep -qE "$PATTERNS"; then
 fi
 
 # Fresh marker already exists?
-MARKER=".claude/.reviewer-clean"
+MARKER=".decode-reviewer-clean"
 if [ -f "$MARKER" ]; then
   MARKED_SHA=$(awk 'NR==1 {print $1}' "$MARKER" 2>/dev/null || echo "")
   CURRENT_SHA=$(git rev-parse HEAD 2>/dev/null || echo "initial")
@@ -61,8 +61,8 @@ Steps (do all of these, in order):
 1. Run `git diff HEAD` via Bash and keep the output in context.
 2. Dispatch the `feature-dev:code-reviewer` subagent via the Agent tool. Pass the diff as context and instruct it to review only the changes, skipping codebase exploration beyond the diff unless a specific blocker needs confirmation. Tell the reviewer: target latency under 90 seconds; report only blocking issues (confidence ≥ 80).
 3. When the reviewer returns:
-   a. If it reports NO blocking issues (confidence ≥ 80), run `git rev-parse HEAD` via Bash, then Write `.claude/.reviewer-clean` with exactly one line: `<HEAD-SHA> <ISO-8601-UTC-timestamp>`.
-   b. If it reports blocking issues, Write `.claude/.reviewer-findings.md` with the list. Do NOT write `.reviewer-clean`.
+   a. If it reports NO blocking issues (confidence ≥ 80), run `git rev-parse HEAD` via Bash, then Write `.decode-reviewer-clean` with exactly one line: `<HEAD-SHA> <ISO-8601-UTC-timestamp>`.
+   b. If it reports blocking issues, Write `.decode-reviewer-findings.md` with the list. Do NOT write `.reviewer-clean`.
 4. Return. If the user then attempts to commit, the commit-msg hook reads the marker and either allows or blocks the commit. Without a marker and without `[override-reviewer: reason]` in the commit message, the commit is blocked.
 
 If the feature-dev plugin is not installed in this repo, stop and tell the user to run `/plugin install feature-dev@claude-plugins-official` — this is required for the reviewer subagent to be available.

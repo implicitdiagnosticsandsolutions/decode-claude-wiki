@@ -23,12 +23,17 @@
   },
   "permissions": {
     "allow": [
-      "Bash(git diff*)",
+      "Bash(git diff)",
+      "Bash(git diff:*)",
       "Bash(git rev-parse HEAD)",
-      "Bash(git log*)",
-      "Bash(git status*)",
-      "Write(.claude/.reviewer-clean)",
-      "Write(.claude/.reviewer-findings.md)"
+      "Bash(git log)",
+      "Bash(git log:*)",
+      "Bash(git status)",
+      "Bash(git status:*)",
+      "Write(.decode-reviewer-clean)",
+      "Write(.decode-reviewer-findings.md)",
+      "Edit(.decode-reviewer-clean)",
+      "Edit(.decode-reviewer-findings.md)"
     ]
   },
   "hooks": {

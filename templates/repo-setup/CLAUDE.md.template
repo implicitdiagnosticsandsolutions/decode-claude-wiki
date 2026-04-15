@@ -24,7 +24,7 @@ This repo enforces DECODE's Claude Code standards. The full rule catalog lives a
 
 **The short version — what you must follow:**
 
-1. **Reviewer subagent required before commit.** For any change that touches source code, generator scripts, or data outputs, dispatch the `reviewer` subagent (shipped by the `decode-base` plugin) before committing. The Stop hook dispatches it automatically. Committing without a fresh `.claude/.reviewer-clean` marker is blocked by `.githooks/pre-commit` unless the commit message contains `[override-reviewer: <reason>]`. Overrides are visible forever in `git log --grep="override-reviewer"`.
+1. **Reviewer subagent required before commit.** For any change that touches source code, generator scripts, or data outputs, dispatch the `feature-dev:code-reviewer` subagent before committing. The Stop hook does this automatically. Committing without a fresh `.decode-reviewer-clean` marker is blocked by `.githooks/commit-msg` unless the commit message contains `[override-reviewer: <reason>]`. Overrides are visible forever in `git log --grep="override-reviewer"`.
 
 2. **Verify before claiming.** Before saying "X works", "it's documented", or "it's in memory", run a concrete check. Paste the output. "Should" is a red flag — replace it with a check.
 
