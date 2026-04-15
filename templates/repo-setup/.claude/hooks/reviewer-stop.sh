@@ -1,41 +1,36 @@
 #!/usr/bin/env bash
 #
-# decode-base plugin — Stop hook that dispatches the reviewer subagent
-# when the session touched substantive files.
+# decode-base plugin — Stop hook that asks the parent model to run the
+# feature-dev:code-reviewer subagent and write a marker for the commit-msg
+# gate to check.
 #
-# This version ships via the plugin. The target repo also has its own
-# local copy at .claude/hooks/reviewer-stop.sh which is what fires first
-# (committed in the repo, loads on git pull with zero prompt). The plugin
-# copy is the canonical version — updates flow from decode-claude-wiki.
+# We do not maintain our own reviewer. feature-dev:code-reviewer from
+# claude-plugins-official is better-built (confidence filter, CLAUDE.md
+# adherence, official Anthropic-maintained) so we compose on top:
+#   - The reviewer itself is third-party (Sonnet, read-only).
+#   - The parent model wraps it: fetches the diff, dispatches the reviewer,
+#     writes the marker based on the outcome.
+#   - The commit-msg hook is the deterministic gate (checks for marker or
+#     override).
 #
-# Contract:
-# - Substantive files = source code (.py, .ts, .tsx, .js, .jsx, .R, .r,
-#   .java, .sql), generator scripts in scripts/, and data outputs
-#   under output/ or dist/.
-# - If any of these are modified vs HEAD (staged, unstaged, or untracked),
-#   dispatch the reviewer subagent via hookSpecificOutput asking Claude
-#   to run the Agent tool with subagent_type=reviewer.
-# - The reviewer writes .claude/.reviewer-clean or .claude/.reviewer-findings.md.
+# This hook is repo-committed (in .claude/hooks/) so it fires with zero
+# prompt on git pull. Plugin-install is optional productivity layer.
 #
 # Exit codes:
-# - 0: no substantive changes; nothing to do.
-# - 0 with hookSpecificOutput: substantive changes detected; ask Claude to run reviewer.
+# - 0: no substantive changes, or fresh marker already exists.
+# - 2 + stderr: substantive changes without marker — block stop, pipe
+#   instruction to the model.
 
 set -euo pipefail
 
-# Only run in a git repo
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   exit 0
 fi
 
 cd "$(git rev-parse --show-toplevel)"
 
-# Substantive file patterns (source code, generators, data outputs)
 PATTERNS='\.(py|ts|tsx|js|jsx|R|r|java|sql)$|^scripts/|^output/|^dist/'
 
-# Collect all modified files — staged, unstaged, and untracked — normalized
-# so rename targets and paths with spaces are handled correctly. Uses the
-# same detection approach as the commit-msg gate for consistency.
 MODIFIED=$( {
   git diff --name-only --diff-filter=ACMRD HEAD 2>/dev/null || true
   git ls-files --others --exclude-standard 2>/dev/null || true
@@ -43,30 +38,33 @@ MODIFIED=$( {
 } | sort -u )
 
 if ! echo "$MODIFIED" | grep -qE "$PATTERNS"; then
-  # No substantive changes
   exit 0
 fi
 
-# Check if reviewer already ran cleanly this session (marker exists and matches current HEAD)
+# Fresh marker already exists?
 MARKER=".claude/.reviewer-clean"
 if [ -f "$MARKER" ]; then
   MARKED_SHA=$(awk 'NR==1 {print $1}' "$MARKER" 2>/dev/null || echo "")
   CURRENT_SHA=$(git rev-parse HEAD 2>/dev/null || echo "initial")
   if [ "$MARKED_SHA" = "$CURRENT_SHA" ]; then
-    # Fresh clean marker — no action needed
     exit 0
   fi
 fi
 
-# Stop hook schema per Claude Code docs supports top-level fields only
-# (continue, stopReason, decision, reason, systemMessage) — NOT the
-# hookSpecificOutput+additionalContext envelope used by PreToolUse/PostToolUse.
-# Use exit 2 + stderr: that pipes the message into the model's context and
-# blocks the Stop so the model processes the instruction before ending the
-# session. Once the reviewer writes the marker, the next Stop check above
-# matches HEAD and exits 0 cleanly.
-
+# Ask the parent model to orchestrate the review.
+# Stop hook schema supports stderr + exit 2 to block stop and pipe to model.
 cat >&2 <<'EOF'
-REVIEWER REQUIRED: This session modified substantive files (source code, generators, or data outputs). Before the user commits, dispatch the `reviewer` subagent via the Agent tool (subagent_type: reviewer). The reviewer reads the git diff and writes either .claude/.reviewer-clean (a single line with HEAD SHA and timestamp) or .claude/.reviewer-findings.md. The commit-msg hook blocks commits without a fresh .claude/.reviewer-clean marker matching HEAD, unless the commit message contains [override-reviewer: reason]. Do not commit until the reviewer has run or an override is explicitly justified.
+REVIEWER REQUIRED: This session modified substantive files. Before the session ends (or the user commits), run the feature-dev:code-reviewer subagent and produce a marker the commit-msg gate can check.
+
+Steps (do all of these, in order):
+
+1. Run `git diff HEAD` via Bash and keep the output in context.
+2. Dispatch the `feature-dev:code-reviewer` subagent via the Agent tool. Pass the diff as context and instruct it to review only the changes, skipping codebase exploration beyond the diff unless a specific blocker needs confirmation. Tell the reviewer: target latency under 90 seconds; report only blocking issues (confidence ≥ 80).
+3. When the reviewer returns:
+   a. If it reports NO blocking issues (confidence ≥ 80), run `git rev-parse HEAD` via Bash, then Write `.claude/.reviewer-clean` with exactly one line: `<HEAD-SHA> <ISO-8601-UTC-timestamp>`.
+   b. If it reports blocking issues, Write `.claude/.reviewer-findings.md` with the list. Do NOT write `.reviewer-clean`.
+4. Return. If the user then attempts to commit, the commit-msg hook reads the marker and either allows or blocks the commit. Without a marker and without `[override-reviewer: reason]` in the commit message, the commit is blocked.
+
+If the feature-dev plugin is not installed in this repo, stop and tell the user to run `/plugin install feature-dev@claude-plugins-official` — this is required for the reviewer subagent to be available.
 EOF
 exit 2

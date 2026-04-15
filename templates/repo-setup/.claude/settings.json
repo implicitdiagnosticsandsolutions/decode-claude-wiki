@@ -6,12 +6,31 @@
         "source": "github",
         "repo": "implicitdiagnosticsandsolutions/decode-claude-wiki"
       }
+    },
+    "claude-plugins-official": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-plugins-official"
+      }
     }
   },
   "enabledPlugins": {
-    "decode-base@decode": true
+    "decode-base@decode": true,
+    "feature-dev@claude-plugins-official": true,
+    "code-simplifier@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true
   },
-  "permissions": {},
+  "permissions": {
+    "allow": [
+      "Bash(git diff*)",
+      "Bash(git rev-parse HEAD)",
+      "Bash(git log*)",
+      "Bash(git status*)",
+      "Write(.claude/.reviewer-clean)",
+      "Write(.claude/.reviewer-findings.md)"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {

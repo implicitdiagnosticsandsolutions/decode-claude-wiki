@@ -4,9 +4,9 @@ The base Claude Code plugin shipped to every in-scope DECODE target repo.
 
 ## What it provides
 
-### Agents (subagents)
+### Agents
 
-- `reviewer` — the mandatory reviewer subagent. Dispatched by the repo's Stop hook when the session touched substantive files. Returns findings or writes `.claude/.reviewer-clean` with the current HEAD SHA. The repo's pre-commit gate checks for the marker.
+This plugin does not ship its own reviewer subagent. The **`feature-dev:code-reviewer`** from `claude-plugins-official` is used instead — better-built, officially maintained, confidence-filtered output. Target repos enable `feature-dev@claude-plugins-official` alongside `decode-base@decode` in their `.claude/settings.json`.
 
 ### Skills
 
