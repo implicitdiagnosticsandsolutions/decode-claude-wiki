@@ -58,12 +58,15 @@ if [ -f "$MARKER" ]; then
   fi
 fi
 
-# Ask Claude to dispatch the reviewer subagent
-cat <<'JSON'
-{
-  "hookSpecificOutput": {
-    "hookEventName": "Stop",
-    "additionalContext": "REVIEWER REQUIRED: This session modified substantive files (source code, generators, or data outputs). Before the user commits, dispatch the `reviewer` subagent via the Agent tool (subagent_type: reviewer). The reviewer reads the git diff and writes either .claude/.reviewer-clean (a single line with HEAD SHA and timestamp) or .claude/.reviewer-findings.md. The pre-commit hook blocks commits without a fresh .reviewer-clean marker matching the commit's parent SHA, unless the commit message contains `[override-reviewer: reason]`. Do not commit until the reviewer has run or an override is explicitly justified."
-  }
-}
-JSON
+# Stop hook schema per Claude Code docs supports top-level fields only
+# (continue, stopReason, decision, reason, systemMessage) — NOT the
+# hookSpecificOutput+additionalContext envelope used by PreToolUse/PostToolUse.
+# Use exit 2 + stderr: that pipes the message into the model's context and
+# blocks the Stop so the model processes the instruction before ending the
+# session. Once the reviewer writes the marker, the next Stop check above
+# matches HEAD and exits 0 cleanly.
+
+cat >&2 <<'EOF'
+REVIEWER REQUIRED: This session modified substantive files (source code, generators, or data outputs). Before the user commits, dispatch the `reviewer` subagent via the Agent tool (subagent_type: reviewer). The reviewer reads the git diff and writes either .claude/.reviewer-clean (a single line with HEAD SHA and timestamp) or .claude/.reviewer-findings.md. The commit-msg hook blocks commits without a fresh .claude/.reviewer-clean marker matching HEAD, unless the commit message contains [override-reviewer: reason]. Do not commit until the reviewer has run or an override is explicitly justified.
+EOF
+exit 2
