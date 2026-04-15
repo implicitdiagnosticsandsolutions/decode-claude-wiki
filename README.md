@@ -4,11 +4,12 @@ Standards, rules, plugin marketplace, and rollout coordination for Claude Code u
 
 ## What this repo is
 
-1. **A Claude Code plugin marketplace.** The `decode-base` plugin (reviewer subagent, incident-logger skill, plan-reviewer skill) is published from `plugins/decode-base/` and installed into target repos via one prompt on first Claude Code session.
-2. **A template for hardening any DECODE repo.** `templates/repo-setup/` is copy-pasted into each in-scope repo as a single PR, adding `.claude/` hooks, `.githooks/pre-commit` gate, `CLAUDE.md`, and `.github/workflows/gate.yml` CI backstop.
-3. **The rollout tracker + open decisions.** `docs/plan/` has the current strategy, rollout status per repo, and open questions.
-4. **The incident log.** `docs/incidents/` — real failures that justify each rule. Auto-captured from override markers, CI failures, and revert commits going forward.
-5. **The rules catalog.** `docs/rules/` — the library of hard rules the target repos enforce.
+1. **A template for hardening any DECODE repo.** `templates/repo-setup/` is copy-pasted into each in-scope repo as a single PR, adding `.claude/` hooks, `.githooks/{pre-commit,commit-msg}` gates, `CLAUDE.md`, and `.github/workflows/gate.yml` CI backstop.
+2. **The rollout tracker + open decisions.** `docs/plan/` has the current strategy, rollout status per repo, and open questions.
+3. **The incident log.** `docs/incidents/` — real failures that justify each rule. Auto-captured from override markers, CI failures, and revert commits going forward.
+4. **The rules catalog.** `docs/rules/` — the library of hard rules the target repos enforce.
+
+Target repos install productivity plugins (`feature-dev`, `code-simplifier`, `claude-md-management`, `superpowers`) directly from Anthropic's official marketplace. This repo does not publish its own plugin marketplace — hooks ship as repo-committed files, plugins come from upstream.
 
 ## What this repo is NOT
 
@@ -23,8 +24,8 @@ Standards, rules, plugin marketplace, and rollout coordination for Claude Code u
 | Reading for the first time | [`docs/plan/00-overview.md`](docs/plan/00-overview.md) |
 | Owning the rollout | [`docs/plan/03-rollout-status.md`](docs/plan/03-rollout-status.md) + [`templates/repo-setup/README.md`](templates/repo-setup/README.md) |
 | Reviewing an auto-captured incident | [`docs/incidents/README.md`](docs/incidents/README.md) |
-| Editing the reviewer agent | [`plugins/decode-base/agents/reviewer.md`](plugins/decode-base/agents/reviewer.md) |
-| Adding a hook to all target repos | [`plugins/decode-base/hooks/`](plugins/decode-base/hooks/) + update `templates/repo-setup/.claude/settings.json` |
+| Editing reviewer behavior | Adjust the "Reviewer procedure" section in `templates/repo-setup/CLAUDE.md.template`. The reviewer itself is `feature-dev:code-reviewer` from `anthropics/claude-plugins-official`, not a DECODE-owned agent. |
+| Adding a hook to all target repos | Edit the relevant file under `templates/repo-setup/.claude/hooks/` and `.githooks/`, then open a PR against each target repo to sync the change. |
 | Reading the design history | [`docs/plan/02-reviewer-critique.md`](docs/plan/02-reviewer-critique.md) |
 
 ## Doc index
@@ -35,21 +36,14 @@ Standards, rules, plugin marketplace, and rollout coordination for Claude Code u
 
 ```
 decode-claude-wiki/
-├── .claude-plugin/
-│   └── marketplace.json              # catalog for Claude Code
-├── plugins/
-│   └── decode-base/                  # the plugin distributed to target repos
-│       ├── plugin.json
-│       ├── README.md
-│       ├── hooks/                    # hooks added by plugin install
-│       └── agents/                   # reviewer subagent
 ├── templates/
 │   └── repo-setup/                   # copy-paste source for per-repo PRs
-│       ├── .claude/
-│       ├── .githooks/
-│       ├── .github/
-│       ├── scripts/
-│       └── CLAUDE.md.template
+│       ├── .claude/                  # settings.json + hooks (repo-committed)
+│       ├── .githooks/                # pre-commit + commit-msg gates
+│       ├── .github/workflows/        # CI backstop
+│       ├── scripts/setup.sh          # core.hooksPath wiring
+│       ├── .gitignore                # excludes .decode-reviewer-* files
+│       └── CLAUDE.md.template        # base rules + reviewer procedure
 ├── docs/
 │   ├── INDEX.md
 │   ├── plan/

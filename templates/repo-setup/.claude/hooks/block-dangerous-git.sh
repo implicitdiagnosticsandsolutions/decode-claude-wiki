@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# decode-base plugin — PreToolUse hook on Bash.
+# DECODE hardening PreToolUse hook on Bash.
 # Blocks destructive git operations without explicit user sign-off.
 #
 # Tier-aware: product tier repos (node, java) get the full lockdown.

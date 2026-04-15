@@ -6,8 +6,9 @@ Copy-paste source for the hardening PR applied to each in-scope DECODE repo.
 
 ```
 .claude/
-  settings.json                 # declares decode marketplace + enables decode-base plugin;
-                                # wires the Claude Code hooks
+  settings.json                 # declares anthropics/claude-plugins-official marketplace,
+                                # enables feature-dev + code-simplifier + claude-md-management + superpowers,
+                                # wires the Claude Code hooks, pre-approves reviewer tool calls
   hooks/
     reviewer-stop.sh            # Stop: dispatch the reviewer subagent
     block-dangerous-git.sh      # PreToolUse(Bash): block destructive git
@@ -75,4 +76,4 @@ All target repos will drift. When this template changes:
    - (preferred) open a small PR that cherry-picks the relevant changes, or
    - (future) have a scheduled workflow in this repo open PRs automatically.
 
-The plugin at `plugins/decode-base/` is different — plugin updates ship automatically to all target repos via the marketplace on the next Claude Code session. No per-repo PR needed for plugin changes.
+All productivity plugins are sourced from Anthropic's official marketplace (`anthropics/claude-plugins-official`) — updates come from upstream automatically on session start. DECODE does not maintain its own plugin marketplace.

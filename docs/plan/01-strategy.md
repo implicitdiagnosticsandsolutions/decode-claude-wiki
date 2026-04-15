@@ -22,7 +22,7 @@ A `commit-msg` git hook refuses commits that touch substantive files unless:
 
 `commit-msg` (not `pre-commit`) is used because git passes the commit message file only to `commit-msg` — the override marker cannot be detected in `pre-commit`.
 
-The reviewer subagent is shipped via the `decode-base` plugin. A Stop hook in each target repo dispatches it automatically when a session touched substantive files. So for vibe coders, the flow is invisible — model edits → Stop hook runs reviewer → reviewer writes marker if clean → commit succeeds.
+The reviewer subagent is `feature-dev:code-reviewer` from Anthropic's official marketplace. A Stop hook in each target repo dispatches it automatically when a session touched substantive files. So for vibe coders, the flow is invisible — model edits → Stop hook runs reviewer → reviewer writes marker if clean → commit succeeds.
 
 **Override is strong, not weak.** An env var would be invisible; the commit-message marker shows up in `git log --grep="override-reviewer"` — every bypass is auditable forever.
 
@@ -79,7 +79,7 @@ See [`03-rollout-status.md`](03-rollout-status.md).
 
 ### In v3
 
-- `decode-base` plugin published through this repo as a marketplace
+- Productivity plugins sourced from `anthropics/claude-plugins-official` (feature-dev, code-simplifier, claude-md-management, superpowers)
 - Reviewer subagent + plan-reviewer skill + incident-logger skill in the plugin
 - Stop hook that proactively dispatches the reviewer
 - Pre-commit gate with reviewer-marker + language checks

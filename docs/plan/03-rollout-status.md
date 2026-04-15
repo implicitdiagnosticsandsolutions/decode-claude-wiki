@@ -10,7 +10,7 @@ Last updated: 2026-04-15
 
 | Gate | Status | Notes |
 |---|---|---|
-| v3 scaffold + `decode-base` plugin + `templates/repo-setup/` committed in this repo | 🟨 In progress | |
+| v3 scaffold + `templates/repo-setup/` validated in sandbox | ✅ 2026-04-15 | Sandbox (decode-claude-sandbox) ran through 11/13 TEST_PLAN scenarios green. |
 | Empirical verification of plugin auto-prompt flow in Claude Code | ⬜ Not started | Open once pilot PR lands |
 | Pilot PR merged in `icat_results` | ⬜ Not started | Pilot target — small, data-analysis-tier, low blast radius |
 | Pilot observed working for one Kleo + one Juliane session | ⬜ Not started | Validate zero-friction claim |

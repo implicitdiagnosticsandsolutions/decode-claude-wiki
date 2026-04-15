@@ -22,8 +22,8 @@ Auto-captured going forward from override markers, CI failures, and revert commi
 - [`reference/claude-code-patterns.md`](reference/claude-code-patterns.md) — Claude Code mechanisms (hooks, plugins, settings) we use
 - [`reference/repo-inventory.md`](reference/repo-inventory.md) — current state of Claude Code adoption across the org
 
-## Plugin + templates (not under `docs/`)
+## Templates (not under `docs/`)
 
-- [`../plugins/decode-base/`](../plugins/decode-base/) — the shipped plugin
-- [`../templates/repo-setup/`](../templates/repo-setup/) — the per-repo PR content
-- [`../.claude-plugin/marketplace.json`](../.claude-plugin/marketplace.json) — marketplace catalog
+- [`../templates/repo-setup/`](../templates/repo-setup/) — the per-repo PR content that ships the hardening (hooks, gates, CI workflow, CLAUDE.md)
+
+Productivity plugins (`feature-dev`, `code-simplifier`, `claude-md-management`, `superpowers`) come from Anthropic's official marketplace (`anthropics/claude-plugins-official`) — no DECODE-hosted marketplace needed.

@@ -2,19 +2,17 @@
 
 ## Session-start: ensure required plugins are installed
 
-At the start of any new session in this repo, run `/plugin marketplace list`. If either `decode` or `claude-plugins-official` is missing, add them and install the declared plugins:
+At the start of any new session in this repo, run `/plugin marketplace list`. If `claude-plugins-official` is not listed, install the four required plugins:
 
 ```
-/plugin marketplace add implicitdiagnosticsandsolutions/decode-claude-wiki
 /plugin marketplace add anthropics/claude-plugins-official
-/plugin install decode-base@decode
 /plugin install feature-dev@claude-plugins-official
 /plugin install code-simplifier@claude-plugins-official
 /plugin install claude-md-management@claude-plugins-official
 /plugin install superpowers@claude-plugins-official
 ```
 
-One-time per user per machine. `feature-dev` provides the `code-reviewer` subagent that the Stop hook dispatches, and `code-architect` for plan review. Without `feature-dev` installed, every commit touching source code will be blocked by the commit-msg gate.
+One-time per user per machine. `feature-dev` provides the `code-reviewer` subagent that the Stop hook dispatches (and `code-architect` for plan review). Without `feature-dev` installed, every commit touching source code will be blocked by the commit-msg gate.
 
 Subsequent sessions refresh plugins automatically.
 

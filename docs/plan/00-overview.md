@@ -29,7 +29,7 @@ A **commit-msg hook** blocks any commit that touches substantive files (source c
 
 (The marker check lives in `commit-msg`, not `pre-commit`, because only `commit-msg` receives the commit message as a file. `pre-commit` runs first for language lint but cannot read the intended message.)
 
-The reviewer agent itself is shipped via the `decode-base` plugin — a subagent dispatched automatically by a Stop hook whenever the session touched substantive files, so for vibe coders the flow is transparent: model edits, Stop hook fires reviewer, reviewer returns findings or clean, model iterates or commits.
+The reviewer agent is `feature-dev:code-reviewer` from Anthropic's official marketplace (`anthropics/claude-plugins-official`). A Stop hook in each target repo dispatches it automatically when the session touched substantive files. For vibe coders the flow is transparent: model edits, Stop hook fires reviewer, reviewer returns findings or clean, model iterates or commits.
 
 ### Gate 2: Language + data gate at pre-commit
 
@@ -70,24 +70,27 @@ The PR is generated from `templates/repo-setup/` in this repo and adapted minima
 
 The only opt-in is `scripts/setup.sh` to wire `git config core.hooksPath .githooks` — which activates the local pre-commit hook. CI backstops users who never ran it.
 
-## The third layer — productivity plugins (one prompt, then silent)
+## The third layer — productivity plugins from Anthropic's official marketplace
 
-`.claude/settings.json` in each target repo declares the marketplace (this repo) and enables plugins:
+`.claude/settings.json` in each target repo declares Anthropic's official marketplace and enables the plugins we use:
 
 ```json
 {
   "extraKnownMarketplaces": {
-    "decode": {"source": {"source": "github", "repo": "implicitdiagnosticsandsolutions/decode-claude-wiki"}}
+    "claude-plugins-official": {"source": {"source": "github", "repo": "anthropics/claude-plugins-official"}}
   },
   "enabledPlugins": {
-    "decode-base@decode": true
+    "feature-dev@claude-plugins-official": true,
+    "code-simplifier@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true
   }
 }
 ```
 
-First time a user opens the repo in Claude Code, they see one prompt: *"This repo declares the `decode` marketplace and plugin `decode-base`. Install?"* One click, then silent forever. Updates ship on the next session.
+Plugins install on first Claude Code session via CLAUDE.md-triggered install commands. Updates ship automatically thereafter. `feature-dev` provides the `code-reviewer` subagent (dispatched by the Stop hook) and `code-architect` (plan review). `superpowers` adds TDD / brainstorming / verification skills. `code-simplifier` and `claude-md-management` are quality helpers.
 
-`decode-base` currently contains: the reviewer subagent, an incident-logger skill, a plan-reviewer skill. More skills can be added to the plugin over time without any target-repo change.
+DECODE does not publish its own plugin marketplace. All plugins come from upstream; DECODE-specific enforcement ships as repo-committed hooks.
 
 ## Incident capture — automated
 
@@ -111,7 +114,7 @@ Scope excludes: `strategy-suite`, `cmix-programmatic`, `questionnaire-editor` (s
 Every artifact needed to continue the rollout is in this repo:
 
 - The template at `templates/repo-setup/` is copy-pasteable into any new repo.
-- The plugin at `plugins/decode-base/` is the active code surface.
+- The templates at `templates/repo-setup/` are the canonical sources for hooks, gates, and CLAUDE.md rules.
 - The checklist at `03-rollout-status.md` tracks which repos are done.
 - The open questions at `04-open-questions.md` are scoped and self-contained.
 

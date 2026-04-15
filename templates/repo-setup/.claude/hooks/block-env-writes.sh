@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# decode-base plugin — PreToolUse hook on Edit / Write tools.
+# DECODE hardening PreToolUse hook on Edit / Write tools.
 # Blocks writes to .env* files, credentials files, and key files.
 #
 # Exits 2 (block) if the target path matches the denylist.

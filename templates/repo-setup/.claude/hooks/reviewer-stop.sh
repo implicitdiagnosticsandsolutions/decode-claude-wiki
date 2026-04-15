@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# decode-base plugin — Stop hook.
+# DECODE hardening Stop hook.
 # Blocks session stop when substantive files are modified and no fresh
 # reviewer-clean marker exists. The detailed procedure lives in CLAUDE.md
 # under "Reviewer procedure" — this hook just triggers it.
