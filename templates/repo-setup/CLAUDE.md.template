@@ -1,5 +1,18 @@
 # CLAUDE.md
 
+## Session-start: ensure the `decode` plugin is installed
+
+At the start of any new session in this repo, run `/plugin marketplace list`. If the `decode` marketplace is not listed, run these two commands:
+
+```
+/plugin marketplace add implicitdiagnosticsandsolutions/decode-claude-wiki
+/plugin install decode-base@decode
+```
+
+This is a one-time action per user per machine. Once installed, the plugin and its updates are fetched automatically on subsequent sessions — no further action needed.
+
+You do this so the `reviewer` subagent (required by the commit-msg gate) is available. Without it, every commit that touches substantive files will be blocked.
+
 ## DECODE base rules
 
 This repo enforces DECODE's Claude Code standards. The full rule catalog lives at https://github.com/implicitdiagnosticsandsolutions/decode-claude-wiki/tree/main/docs/rules — rules are loaded by reference.
