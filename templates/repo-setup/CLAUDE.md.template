@@ -1,0 +1,48 @@
+# CLAUDE.md
+
+## DECODE base rules
+
+This repo enforces DECODE's Claude Code standards. The full rule catalog lives at https://github.com/implicitdiagnosticsandsolutions/decode-claude-wiki/tree/main/docs/rules — rules are loaded by reference.
+
+**The short version — what you must follow:**
+
+1. **Reviewer subagent required before commit.** For any change that touches source code, generator scripts, or data outputs, dispatch the `reviewer` subagent (shipped by the `decode-base` plugin) before committing. The Stop hook dispatches it automatically. Committing without a fresh `.claude/.reviewer-clean` marker is blocked by `.githooks/pre-commit` unless the commit message contains `[override-reviewer: <reason>]`. Overrides are visible forever in `git log --grep="override-reviewer"`.
+
+2. **Verify before claiming.** Before saying "X works", "it's documented", or "it's in memory", run a concrete check. Paste the output. "Should" is a red flag — replace it with a check.
+
+3. **Patch the source, not the generated artifact.** If a file under `output/` or `dist/` was produced by a script, edit the script and regenerate. Never edit the artifact directly.
+
+4. **Stage files explicitly.** Never `git add -A` or `git add .`. Name each file.
+
+5. **No AI attribution in commits.** Conventional format, human author.
+
+## First-time setup in this repo
+
+If this is the first time you (or anyone) is committing in this repo after the hardening PR merged, run:
+
+```bash
+bash scripts/setup.sh
+```
+
+This wires `.githooks/pre-commit` into git via `core.hooksPath`. One-time per clone.
+
+## Destructive operations
+
+Destructive git operations (`push --force`, `reset --hard`, `clean -f`, `branch -D`, etc.) are blocked by the `block-dangerous-git.sh` PreToolUse hook. If you genuinely need one, ask the user to run it manually after explicit chat confirmation.
+
+Writes to `.env*`, `credentials*`, `*.pem`, `*.key`, and other secret files are blocked by `block-env-writes.sh`.
+
+---
+
+<!-- Per-repo section below. Fill in repo-specific conventions. -->
+
+## This repo
+
+<REPO-SPECIFIC-CONTENT-GOES-HERE>
+
+Typical content for this section:
+- What this repo does in one paragraph
+- Entry point files
+- How to run the main workflow locally
+- Repo-specific rules or invariants (file-level sources of truth, etc.)
+- Test/lint commands

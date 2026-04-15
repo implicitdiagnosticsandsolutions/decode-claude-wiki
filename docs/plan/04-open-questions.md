@@ -1,109 +1,74 @@
 # Open Questions
 
-Decisions pending. Each has an owner (who resolves) and a blocker (what it blocks).
+Decisions still pending. Resolved questions moved to the bottom.
 
 ---
 
-## Q1. Does the plugin marketplace mechanism work for arbitrary GitHub-org repos?
+## Q1. Public or private repo?
 
-**Context:** Anthropic's plugin marketplace docs show `/plugin marketplace add owner/repo` as the install mechanism. Unclear whether `implicitdiagnosticsandsolutions/decode-claude-wiki` works the same as an official Anthropic-listed marketplace — auto-update, version control, etc.
+**Context:** This repo is public. As it accumulates auto-captured incidents, some will reference client names, cost narratives, or internal decisions. That's sensitive.
 
-**Owner:** Rollout owner
-**Blocks:** All plugin work
-**Resolution:** Half-day empirical test. Scaffold a minimal plugin in this repo, register it from the supervisor's machine, confirm install + update flow works.
-**Status:** ⬜ Not started
-
----
-
-## Q2. Should this repo be public or private?
-
-**Context:** The incident log will eventually reference customer names, cost narratives, internal decisions. That's sensitive.
-
-**Options:**
-- **Public (current):** easier onboarding, aligns with "anyone can see our standards" culture.
-- **Private:** protects incident details, restricts to org members.
+**Options:** Public (easier onboarding) or private (protects incident log; only org members can `/plugin marketplace add` it, but that's everyone who matters).
 
 **Owner:** Supervisor
-**Blocks:** Seeding the incident log with customer-specific incidents
-**Resolution:** Decision needed before Q1 2026-end. Recommendation from reviewer: **private**.
-**Status:** ⬜ Pending decision
+**Blocks:** Not blocking — decide anytime before incident volume grows
+**Recommendation:** Private. Switch anytime via `gh repo edit ... --visibility private`.
+**Status:** ⬜
 
 ---
 
-## Q3. Should reviewer-agent discipline be enforced at commit time?
+## Q2. Monitoring destination for the weekly signals?
 
-**Context:** Social-media-analytics Rule 5 says non-trivial changes must get a second-opinion reviewer agent. Two ways to enforce:
+**Context:** Three signals worth tracking after rollout: override count per repo per week, pre-commit gate failure count, CI failure rate delta pre/post rollout. Destination options:
 
-- **Pre-commit hook** — reviewer runs before commit, blocks on unresolved findings.
-- **Stop hook (reminder only)** — reminds the model at end of turn, doesn't block.
+- GitHub Issue (rolling, one per month) in this repo
+- Slack channel via webhook
+- Dashboard (e.g. Grafana, simple static HTML in this repo rendered nightly)
 
-**Tradeoff:** Pre-commit is stricter but adds latency (reviewer takes 30–60s). Stop is more practical but weaker.
+**Owner:** Supervisor + Kleo
+**Blocks:** v4 monitoring work (deferred from v3)
+**Status:** ⬜
+
+---
+
+## Q3. Reviewer agent latency — acceptable?
+
+**Context:** The Stop-hook reviewer dispatches a subagent. Latency is typically 30–90s depending on diff size. For small vibe-coding sessions this adds a noticeable pause before commit.
+
+**Owner:** Kleo (observes during pilot)
+**Blocks:** Nothing — empirical question for the pilot
+**Resolution:** Track latency during the `icat_results` pilot. If >60s median, consider switching to a lighter-weight reviewer (diff-only, skip codebase exploration) by default.
+**Status:** ⬜ Track during pilot
+
+---
+
+## Q4. Strong override marker format — `[override-reviewer: reason]` or something shorter?
+
+**Context:** Vibe coders copy-paste commit messages from Claude. A verbose marker is fine if clear; a short one (`!R: reason`) is easier to type but less obviously an override.
 
 **Owner:** Supervisor
-**Blocks:** Definition of done for Wave 1+
-**Resolution:** Pilot both on `strategy-suite` for one week, pick based on friction.
-**Status:** ⬜ Not started
+**Blocks:** pre-commit gate implementation (default in template)
+**Recommendation:** `[override-reviewer: reason]`. Verbose on purpose — override should feel slightly weighty to use.
+**Status:** ⬜ Defaulted to verbose; easy to change later
 
 ---
 
-## Q4. Does DECODE have access to Claude for Enterprise server-managed settings?
+## Resolved
 
-**Context:** Anthropic offers server-managed settings (central enforcement of hooks/permissions via admin console) for Enterprise-plan orgs. Would eliminate per-repo hook config in favor of org-wide central control.
+### ~~Q: Does the plugin auto-install mechanism work for arbitrary org repos?~~ Resolved 2026-04-15
 
-**What we know:** DECODE is on GitHub Teams (GitHub's plan, 19/19 seats). The Claude subscription status is separate and not yet checked.
+**Answer:** Yes. `extraKnownMarketplaces` + `enabledPlugins` in project `.claude/settings.json` triggers a one-click install prompt on first session when the user trusts the folder. Updates ship from the marketplace repo on subsequent sessions. True zero-click auto-install is a feature request not yet shipped, but one prompt per user per machine is acceptable for our "git pull = hardened" goal.
 
-**Owner:** Supervisor
-**Blocks:** Potentially simpler Wave rollouts (but Wave 1 scoping does not depend on this — can proceed either way)
-**Resolution:** One-day check of the Anthropic billing/admin page. If on Enterprise, re-scope mandatory rails to lean on server-managed settings. If not, proceed with repo-tracked artifacts as planned.
-**Status:** ⏸️ Blocked on 1-day supervisor check
+See [`../reference/claude-code-patterns.md`](../reference/claude-code-patterns.md) for sources.
 
----
+### ~~Q: Enterprise server-managed settings?~~ Deferred indefinitely
 
-## Q5. How do non-programmers (Juliane, Dirk) use this?
+**Answer:** Not blocking. Repo-tracked artifacts remain the primary enforcement layer. If DECODE does turn out to be on Enterprise (unknown, supervisor check pending), server-managed settings become an additional layer on top — they don't invalidate the current design.
 
-**Context:** Strategy-suite has a `jmdh-collab` skill specifically for Juliane/Dirk — guided collaboration workflow because they don't write code directly. These standards are currently written for engineers. Data and UX contributors need a simpler path.
+### ~~Q: How do non-programmers use this?~~ Answered by design
 
-**Owner:** Rollout owner (in consultation with Juliane/Dirk during Wave 3)
-**Blocks:** Wave 3 readiness for `icat_app` etc.
-**Resolution:** Port `strategy-suite/.claude/skills/jmdh-collab/` into the plugin marketplace; validate it still works for them.
-**Status:** ⬜ Not started
+The design assumes vibe coding. The non-programmer interaction is: describe what you want → Claude edits → Stop hook runs reviewer → reviewer reports clean or findings → if findings, Claude iterates → commit. No direct tool invocation required. The plan for Juliane/Dirk-style contributors is no different from the plan for anyone else.
 
----
+### ~~Q: Sentry/monitoring coverage across Wave 1 repos?~~ Scoped out of v3
 
-## Q6. Where does the "data analysis" ruleset come from — port from `social-media-analytics` or draft fresh?
-
-**Context:** `social-media-analytics/CLAUDE.md` has 17 hard rules specifically tuned for data-analysis work (artifact/generator discipline, reproducibility gates, jsdom ground-truth checks, per-cell gate coverage). These would apply to DECODE's data repos too. But those rules reference social-media-analytics incidents, not DECODE ones.
-
-**Options:**
-- **Port verbatim:** fast, but incident refs are from another repo — reduces rule credibility.
-- **Port + re-anchor:** replace social-media-analytics incident refs with matching DECODE incidents where they exist; keep the original ref as "analogous incident" otherwise.
-
-**Owner:** Rollout owner
-**Blocks:** Wave 2+ (data-tier repos)
-**Resolution:** Plan: port + re-anchor. Track re-anchoring work in the incident log.
-**Status:** ⬜ Not started
-
----
-
-## Q7. What's the error-monitoring story for Wave 1 repos?
-
-**Context:** `strategy-suite` has Sentry + structured logging (see `memory/project-error-monitoring.md` on the supervisor's machine). The Wave 1 targets — `datasystem-backend`, `datasystem-frontend`, `decoder_transformations` — have no documented Sentry setup. If hooks or gates introduce behavior that surfaces runtime errors (e.g. a pre-commit gate that exercises a code path), there needs to be a destination for those signals. More broadly: a rollout that hardens dev-time guardrails without a matching runtime observability story is only half a job.
-
-**Owner:** Rollout owner (in consultation with Willi for the Velocity repos)
-**Blocks:** Wave 1 definition of done — "observability is sufficient for Claude-introduced changes to be caught if they ship"
-**Resolution:** Inventory current monitoring per Wave 1 repo; decide whether Sentry/equivalent is a Wave 1 scope item or a follow-up wave.
-**Status:** ⬜ Not started
-
----
-
-## Template for new questions
-
-```markdown
-## Q#. Short question
-
-**Context:** one paragraph.
-**Owner:** who resolves.
-**Blocks:** what's blocked on this.
-**Resolution:** how we'll decide.
-**Status:** ⬜ / 🟨 / ✅ / ⏸️
-```
+The v2 proposal included Willi's Velocity repos in Wave 1. v3 excludes them entirely (Willi's repos are out of scope). So the Sentry question becomes: do Silke / Roshan / Juliane's repos need monitoring? For vibe coding, **yes** — but this is a v4 question, tracked in Q2.

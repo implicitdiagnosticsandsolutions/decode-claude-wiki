@@ -1,0 +1,108 @@
+name: DECODE gate
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+jobs:
+  language-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Detect tier and run language gate
+        run: |
+          set -euo pipefail
+          # Determine changed files since base
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            git diff --name-only "origin/${GITHUB_BASE_REF}"...HEAD > /tmp/changed.txt
+          else
+            git diff --name-only HEAD~1..HEAD > /tmp/changed.txt
+          fi
+          echo "Changed files:"
+          cat /tmp/changed.txt
+
+          FAIL=0
+
+          # Python
+          PY=$(grep -E '\.py$' /tmp/changed.txt || true)
+          if [ -n "$PY" ]; then
+            pip install ruff >/dev/null
+            echo "$PY" | xargs -r ruff check || FAIL=1
+          fi
+
+          # Node/TS/JS
+          JS=$(grep -E '\.(ts|tsx|js|jsx)$' /tmp/changed.txt || true)
+          if [ -n "$JS" ] && [ -f "package.json" ]; then
+            npm ci --no-audit --no-fund >/dev/null
+            if [ -x "node_modules/.bin/eslint" ]; then
+              echo "$JS" | xargs -r node_modules/.bin/eslint || FAIL=1
+            fi
+          fi
+
+          exit $FAIL
+
+  override-audit:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Report override-reviewer usage in PR commits
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          OVERRIDES=$(git log --format='%H %s' "origin/${BASE_REF}"..HEAD | grep -E '\[override-reviewer:' || true)
+          if [ -n "$OVERRIDES" ]; then
+            echo "This PR contains reviewer overrides:"
+            echo "$OVERRIDES"
+            # Non-blocking — just surface it
+          fi
+
+  ci-fail-incident:
+    runs-on: ubuntu-latest
+    needs: [language-gate]
+    if: failure() && github.event_name == 'push'
+    steps:
+      - name: File incident in decode-claude-wiki
+        env:
+          INCIDENT_LOG_TOKEN: ${{ secrets.INCIDENT_LOG_TOKEN }}
+          REPO_NAME: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          SERVER_URL: ${{ github.server_url }}
+          REPO_FULL: ${{ github.repository }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+        run: |
+          set -euo pipefail
+          if [ -z "${INCIDENT_LOG_TOKEN:-}" ]; then
+            echo "INCIDENT_LOG_TOKEN secret not set — skipping incident filing"
+            exit 0
+          fi
+          SHORT_SHA="${SHA:0:7}"
+          DATE=$(date -u +%Y-%m-%d)
+          REPO_BASENAME="${REPO_NAME##*/}"
+          RUN_URL="${SERVER_URL}/${REPO_FULL}/actions/runs/${RUN_ID}"
+          TITLE="incident: ${DATE} ${REPO_BASENAME} ci-fail ${SHORT_SHA}"
+          BODY=$(cat <<EOF
+          Automated incident from ${REPO_BASENAME} CI gate failure.
+
+          - Repo: \`${REPO_BASENAME}\`
+          - Commit: \`${SHORT_SHA}\`
+          - Workflow: ${WORKFLOW_NAME}
+          - Run: ${RUN_URL}
+
+          Triage: open the run above, determine whether this is a real incident (something broke) or noise (flaky test, env issue). If real, convert to docs/incidents/ and close this issue linking to the MD file.
+          EOF
+          )
+          echo "$INCIDENT_LOG_TOKEN" | gh auth login --with-token
+          gh issue create \
+            -R implicitdiagnosticsandsolutions/decode-claude-wiki \
+            -t "$TITLE" \
+            -l "incident,ci-fail" \
+            -b "$BODY"

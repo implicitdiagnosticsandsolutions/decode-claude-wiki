@@ -1,112 +1,116 @@
-# Strategy (v2 — post-critique)
+# Strategy v3 — Harness the Vibe
 
-This is the current rollout strategy. v1 was drafted and reviewed; the critique is preserved in [`02-reviewer-critique.md`](02-reviewer-critique.md) and the changes from v1 → v2 are summarized there.
+Supersedes v2. v2 is preserved in [`02-reviewer-critique.md`](02-reviewer-critique.md) as historical context.
 
-## Architectural decision: mandatory rails first, plugins second
+## What changed from v2
 
-| Role | Mechanism | Enforcement |
-|---|---|---|
-| **Mandatory rails** | Committed in each repo: `CLAUDE.md`, `.claude/settings.json`, `.claude/hooks/`, `.githooks/pre-commit`, one-time `git config core.hooksPath .githooks` in `scripts/setup.sh` | Runs for everyone who clones. Unavoidable. |
-| **Productivity layer** | `decode-claude-wiki` plugin marketplace → skills, slash commands, shared snippets | Opt-in via `/plugin install` |
-| **Knowledge layer** | `decode-claude-wiki/docs/` — incident log, rule catalog, reference | Reference material |
+- **Cut the wave model.** No Wave 1 / Wave 2. Replaced with per-repo PRs applied from a template.
+- **Cut manual incident mining.** Replaced with auto-capture from commit messages + CI failures + reverts.
+- **Cut the "rollout owner talks to each team" step.** Kleo + supervisor coordinate; target-repo owners see a PR in their inbox.
+- **Verified the plugin auto-prompt mechanism.** `extraKnownMarketplaces` + `enabledPlugins` in project-level settings.json triggers a one-click install prompt on first session. Hooks committed directly in each repo fire with zero prompts.
+- **Added strong override.** `[override-reviewer: reason]` in commit message required to bypass the reviewer gate. Bypasses are visible in `git log` forever.
+- **Tier-aware hooks.** The `block-dangerous-git.sh` hook has a narrower scope for data repos (no `checkout .` / `restore .` blocking) and a wider scope for product repos.
 
-The plugin marketplace is a productivity boost. It does **not** carry enforcement. Every repo's own `.claude/hooks/` and `.githooks/pre-commit` are what make the standards real.
+## Two hard gates (enforced)
 
-## Tiered hooks (two profiles, not one)
+### 1. Reviewer marker before commit
 
-Scope the git-safety hook differently for product code vs data exploration. `git checkout .` / `git restore .` are dangerous in a Next.js repo and routine in a scratch analysis repo.
+A `commit-msg` git hook refuses commits that touch substantive files unless:
 
-| Hook | Product tier (NextJS / Java / core products) | Data tier (Python data / R) |
-|---|---|---|
-| `block-dangerous-git.sh` | Full: `--force`, `reset --hard`, `checkout .`, `restore .`, `clean -f`, `branch -D` | Narrow: `--force`, `reset --hard`, `clean -f`, `branch -D` only |
-| `block-env-writes.sh` | Yes (blocks writes to `.env*`, `credentials*`, `*.pem`) | Yes |
-| `monitor-ci.sh` | Yes (async-rewake on `git push`) | Repo-specific |
-| `session-reflect.sh` | Yes (PreCompact — force memory save) | Yes |
-| `stop-invariants.sh` | Yes (Stop — run repo's invariant check) | Yes |
-| `check-doc-index.sh` | Yes | Optional |
+- `.claude/.reviewer-clean` exists and references the current HEAD (freshly written by the reviewer subagent this session), OR
+- Commit message contains `[override-reviewer: <reason>]`.
 
-Two hook profiles shipped as templates, one per tier. Repos pick their tier via `scripts/setup.sh`.
+`commit-msg` (not `pre-commit`) is used because git passes the commit message file only to `commit-msg` — the override marker cannot be detected in `pre-commit`.
 
-## Per-repo tier assignment
+The reviewer subagent is shipped via the `decode-base` plugin. A Stop hook in each target repo dispatches it automatically when a session touched substantive files. So for vibe coders, the flow is invisible — model edits → Stop hook runs reviewer → reviewer writes marker if clean → commit succeeds.
 
-| Tier | Repos |
+**Override is strong, not weak.** An env var would be invisible; the commit-message marker shows up in `git log --grep="override-reviewer"` — every bypass is auditable forever.
+
+### 2. Language + data gate
+
+`pre-commit` hook runs these (before the reviewer marker check in `commit-msg`):
+
+| Detection | Gate |
 |---|---|
-| **product** | `strategy-suite`, `datasystem-backend`, `datasystem-frontend`, `questionnaire-editor`, `cmix-programmatic` |
-| **data-python** | `PBI_team_utils`, `bi2pyhton2point`, `synthetic-consumer`, `icat_app`, `icat_results`, `network_html`, `videoextraction_app`, `new-research-paradigms`, `Blob-Scanner-Azure`, `PBI-URL-Updater` |
-| **data-r** | `decoder_transformations` |
-| **docs / meta** | `velocity-planning`, `decode-claude-wiki`, `organize-github` |
+| Staged `.py` files | `ruff check`; if `pytest.ini`/`pyproject.toml` present, `pytest -x` on affected paths |
+| Staged `.ts` / `.tsx` / `.js` | `eslint`; if `vitest.config.*`, `vitest run --changed` |
+| Staged `.R` / `.r` | `lintr` (skipped if not installed — soft fail with warning, not a gate) |
+| Staged artifact under `output/` or `dist/` (`.csv`, `.json`, `.html`, `.xlsx`) | Last-modified time of the artifact must be newer than the last-modified time of any generator script in `scripts/` — catches "edited the artifact, forgot the generator" |
 
-## Rollout waves (blast-radius ordered)
+Exit non-zero on any gate failure. CI runs the same script as a bypass-safety net for users who skipped `scripts/setup.sh`.
 
-| Wave | Repos | Rationale |
-|---|---|---|
-| **Pilot** | `decode-claude-wiki` (this repo), `strategy-suite` (already configured) | Can't roll rules without an incident log. Must verify plugin marketplace mechanism. |
-| **Wave 1** (parallel) | `datasystem-backend`, `datasystem-frontend`, `decoder_transformations` | **Customer-facing** — highest blast radius. Willi + rollout owner collaborate. |
-| **Wave 2** | `PBI_team_utils`, `bi2pyhton2point` | Heavy Claude usage (Silke, Roshan) + zero guardrails today. Internal tooling. |
-| **Wave 3** | `icat_app`, `icat_results`, `network_html` | Streamlit apps. Port data-analysis rules from `social-media-analytics` reference. |
-| **Wave 4** | `cmix-programmatic`, `questionnaire-editor`, `synthetic-consumer`, Azure Functions, rest | Lower-risk standardization pass. |
+## Delivery mechanics
 
-## Incident log — the foundation
+### Per-repo PR content
 
-Generic rules are wiki-grade noise. Real rules must reference real failures.
+Every in-scope repo gets the same PR structure, generated from `templates/repo-setup/` in this repo:
 
-Before any rollout wave, the incident log must contain at least one DECODE incident per hard rule being enforced. Candidate sources already visible in memory files:
+```
+.claude/
+  settings.json              # ← committed, fires on git pull inside Claude Code
+  hooks/
+    reviewer-stop.sh
+    block-dangerous-git.sh
+    block-env-writes.sh
+.githooks/
+  pre-commit                 # ← language lint (ruff / eslint / lintr + artifact freshness)
+  commit-msg                 # ← reviewer-marker + [override-reviewer: ...] detection
+scripts/
+  setup.sh                   # ← one-time: git config core.hooksPath .githooks
+CLAUDE.md                    # ← 5 hard rules, pointing at this wiki for the why
+.gitignore                   # ← excludes .claude/.reviewer-clean / .reviewer-findings.md
+.github/workflows/
+  gate.yml                   # ← CI runs language gate; files incident issue on failure
+```
 
-- `feedback-ssl.md` — SSL / `sslmode=require` mandatory since PG17 upgrade (misleading "password authentication failed" without it)
-- `feedback_production_schema.md` — dual Prisma schema trap
-- `feedback_territory_colors.md` — territory color drift
-- `feedback_ssm_url_encoding.md` — SSM URL encoding gotcha
-- `feedback_module_type_trap.md` — module type matching pitfall
-- `feedback_check_deploy.md` — always check CI after push
-- `feedback-pbi-limitations.md` — PBI tool limitations
+Plus one required conversation at the top of `CLAUDE.md` telling future sessions to run `scripts/setup.sh` if they haven't yet.
 
-Each becomes one file under `docs/incidents/`. Rules cite them with (date, repo, SHA, cost).
+### Target repos (13)
 
-## CLAUDE.md sizing — the actual constraint
+See [`03-rollout-status.md`](03-rollout-status.md).
 
-No fixed line limit. Constraint: **every rule must be specific** — either (a) linked to a real incident with date and SHA, or (b) naming a concrete file path it enforces. Vague rules get cut, period.
+### PR origination
 
-`strategy-suite/CLAUDE.md` is 623 lines and works *because* it's specific. A 150-line CLAUDE.md of platitudes is worse than a 600-line one anchored in reality.
+- The pilot PR against `icat_results` is built directly from this repo's template.
+- Subsequent PRs are generated via a script (`scripts/apply-template.sh <target-repo-path> <tier>`) that copies the template, adapts the language tier, and opens a branch.
+- Kleo runs the script, reviews the PR, merges. Supervisor is looped in only for PRs against repos they own directly.
 
-## Bypass — the honest picture
+## Automation — what's in, what's out
 
-The enforcement layers have different bypass risk. Stating it plainly:
+### In v3
 
-| Layer | Bypass possible? | Notes |
-|---|---|---|
-| `.claude/settings.json` hooks | **No** (if user works in Claude Code) | Loaded automatically when a user opens the repo in Claude Code. Fires for every tool call. No install step. |
-| `.claude/settings.json` hooks (user not in Claude Code) | **N/A** | Hooks only exist inside Claude Code sessions. Someone editing via vim + terminal isn't bound by them at all. |
-| `.githooks/pre-commit` | **Yes, until user runs `scripts/setup.sh`** | Git only runs hooks from `.githooks/` if `core.hooksPath` is set. This is one-time per clone, documented in the repo README, but it is opt-in. |
-| CI gate | **Not once it's wired** | Runs the same gate scripts on GitHub Actions. Cannot be bypassed on merges to protected branches. |
+- `decode-base` plugin published through this repo as a marketplace
+- Reviewer subagent + plan-reviewer skill + incident-logger skill in the plugin
+- Stop hook that proactively dispatches the reviewer
+- Pre-commit gate with reviewer-marker + language checks
+- CI backstop
+- Auto-incident filing to this repo on override / CI fail / revert
 
-**Current reality:** CI gates are not wired in any DECODE repo yet. Until CI runs the same scripts as `.githooks/pre-commit`, a user who skips `scripts/setup.sh` has no hard rails during that time window — only the in-Claude-Code `.claude/` hooks, which only fire when they're using Claude Code.
+### Deferred to v4+
 
-**Mitigation sequence:**
-1. Ship `.claude/settings.json` hooks in each wave — immediate hard rail for Claude Code sessions.
-2. Ship `.githooks/pre-commit` + `scripts/setup.sh` — opt-in hard rail at commit time.
-3. Wire CI to run the same gate scripts — closes the `scripts/setup.sh`-bypass gap.
-4. Protect `main` on each repo so CI must pass — makes bypass impossible at merge.
+- Monitoring dashboard (override rate, gate-failure rate, CI failure delta)
+- Auto-generation of new target-repo PRs via scheduled workflow
+- Server-managed settings (if supervisor confirms Enterprise plan)
+- Cross-repo reviewer caching (reviewer results shared between repos when patterns match)
 
-Steps 3 and 4 are not in the Pilot. They are a follow-up wave after Wave 1 ships the base gate scripts. Until then, the bypass risk for `.githooks/pre-commit` is real and not papered over.
+## Tiering
 
-## Definition of done for Wave N
+Only one axis matters: **what language is the repo**. Detection is automatic from file presence.
 
-A repo is "Wave N complete" when:
+| Tier | Detection | Pre-commit gate | Git lockdown scope |
+|---|---|---|---|
+| `python` | `pyproject.toml` or `setup.py` or mostly `.py` files | `ruff` + `pytest` | Narrow: `--force`, `reset --hard`, `clean -f`, `branch -D` only |
+| `node` | `package.json` | `eslint` + `vitest` | Wide: above + `checkout .`, `restore .` |
+| `r` | `.Rproj` or mostly `.R` files | `lintr` | Narrow |
+| `mixed` | multiple of above | Run all applicable gates | Narrow |
+| `docs` | no source files (Markdown / PPTX / etc.) | No gate, just reviewer marker | Narrow |
 
-1. `.claude/settings.json` with the tier-appropriate hook set is committed.
-2. `.claude/hooks/*.sh` are committed and executable.
-3. `CLAUDE.md` imports the DECODE base rules and adds repo-specific ones.
-4. `.githooks/pre-commit` runs the tier-appropriate gate.
-5. `scripts/setup.sh` installs the hook path.
-6. A sanity PR has been merged that proves the hooks fire correctly.
-7. [`03-rollout-status.md`](03-rollout-status.md) is updated in the same commit as the rollout PR.
+## Definition of done — per repo
 
-## What v1 → v2 changed
+A target repo is done when:
 
-See [`02-reviewer-critique.md`](02-reviewer-critique.md). Summary:
+1. The PR from `templates/repo-setup/` is merged into its default branch.
+2. A test commit proves the reviewer-marker pre-commit gate fires.
+3. The repo's row in [`03-rollout-status.md`](03-rollout-status.md) flips to ✅ in the same commit that merges the PR (commit message in the wiki repo or part of the target-repo merge PR body).
 
-- Architecture inverted: plugins were the center in v1, repo-tracked artifacts are the center in v2.
-- Rollout order flipped: Velocity (customer-facing) moved ahead of Silke's PBI utils (internal).
-- Hook scoping split: product vs data tier — `checkout .` was overreach for data repos.
-- CLAUDE.md line limit dropped in favor of a specificity criterion.
-- Incident log made a hard prerequisite for any rollout wave.
+No staff training. No wiki reading. Just the PR.

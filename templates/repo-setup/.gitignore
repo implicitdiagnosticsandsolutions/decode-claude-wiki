@@ -1,0 +1,3 @@
+# Claude Code reviewer artifacts — session-local, never commit
+.claude/.reviewer-clean
+.claude/.reviewer-findings.md
