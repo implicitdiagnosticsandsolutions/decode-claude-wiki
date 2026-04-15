@@ -1,5 +1,4 @@
 {
-  "$schema": "https://code.claude.com/schemas/plugin.json",
   "name": "decode-base",
   "version": "0.1.0",
   "description": "DECODE base plugin — reviewer subagent, incident logger, plan reviewer. Provides the productivity skills that back the mandatory reviewer gate in each target repo.",
