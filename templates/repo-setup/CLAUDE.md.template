@@ -23,13 +23,13 @@ Triggered by the Stop hook when the session modified substantive files and no fr
 1. Run `git diff HEAD` via Bash.
 2. Dispatch `feature-dev:code-reviewer` via the Agent tool. Pass the diff as context. Instruct: review only the changes, target latency under 90 seconds, report only blocking issues (confidence ≥ 80).
 3. When the reviewer returns:
-   - **No blocking issues** → run `git rev-parse HEAD`, then Write `.decode-reviewer-clean` with exactly one line: `<HEAD-SHA> <ISO-8601-UTC-timestamp>`.
+   - **No blocking issues** → compute `HEAD_SHA=$(git rev-parse HEAD)` and `DIFF_HASH=$(git diff HEAD | git hash-object --stdin)`, then Write `.decode-reviewer-clean` with exactly one line: `<HEAD-SHA> <DIFF-HASH> <ISO-8601-UTC-timestamp>`.
    - **Blocking issues** → Write `.decode-reviewer-findings.md` with the list. Do NOT write `.decode-reviewer-clean`.
 4. Return.
 
 If the `feature-dev` plugin is not installed, stop and ask the user to run `/plugin install feature-dev@claude-plugins-official`.
 
-The `commit-msg` git hook blocks commits without a fresh marker unless the commit message contains `[override-reviewer: <reason>]`. Overrides are visible forever in `git log --grep="override-reviewer"`.
+The `commit-msg` git hook blocks commits unless the marker's HEAD and DIFF hashes both match the current repo state, or the commit message contains `[override-reviewer: <reason>]`. Binding to the diff content means any edit made after review invalidates the marker. Overrides are visible forever in `git log --grep="override-reviewer"`.
 
 ## DECODE base rules
 

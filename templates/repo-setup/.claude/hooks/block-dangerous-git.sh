@@ -36,7 +36,8 @@ fi
 # Patterns blocked in ALL tiers (always dangerous).
 # Note: rm patterns are anchored to end-of-argument or followed by a
 # slash-terminated root — this prevents false positives on `rm -rf /tmp/foo`
-# (legitimate) while still blocking `rm -rf /` (catastrophic) and `rm -rf ~`.
+# (legitimate) while still blocking `rm -rf /` (catastrophic), `rm -rf ~`,
+# and `rm -rf ~/` (same home-directory wipe with trailing slash).
 BLOCKED_ALL=(
   "git[[:space:]]+push[[:space:]].*--force"
   "git[[:space:]]+push[[:space:]]+-f([[:space:]]|$)"
@@ -44,7 +45,7 @@ BLOCKED_ALL=(
   "git[[:space:]]+clean[[:space:]]+-[a-z]*f"
   "git[[:space:]]+branch[[:space:]]+-D"
   "(^|[^a-zA-Z0-9_/])rm[[:space:]]+-[a-z]*r[a-z]*f[a-z]*[[:space:]]+/(\s|$)"
-  "(^|[^a-zA-Z0-9_/])rm[[:space:]]+-[a-z]*r[a-z]*f[a-z]*[[:space:]]+~(\s|$)"
+  "(^|[^a-zA-Z0-9_/])rm[[:space:]]+-[a-z]*r[a-z]*f[a-z]*[[:space:]]+~/?(\s|$)"
 )
 
 # Patterns blocked only in PRODUCT tier
