@@ -2,6 +2,14 @@
 
 One line per meaningful change. Dated.
 
+## 2026-04-19
+
+- **Shared language gate added.** `templates/repo-setup/scripts/language-gate.sh` is now the single deterministic lint gate used by both local `pre-commit` and CI.
+- **Artifact warning de-noised.** The old mtime heuristic was replaced with a narrower advisory warning: artifact changes under `output/` or `dist/` without a staged generator change under `scripts/`.
+- **`deslop` brought into the template.** `templates/repo-setup/.claude/skills/deslop/SKILL.md` adds a repo-local advisory cleanup skill for final review-readiness passes before commit.
+- **Docs aligned to shipped behavior.** Reviewer flow now describes the Stop hook honestly as a blocker that points the model at the reviewer procedure, not as an automatic subagent dispatch. Incident auto-capture docs now distinguish shipped CI-failure filing from planned override/revert capture.
+- **DECODE-facing operating model added.** New reference docs capture a DECODE agentic coding model and a repo readiness checklist adapted from the stronger generic parts of the BrainSuite `claude-skills` repo.
+
 ## 2026-04-15
 
 - **Scaffold committed** with v3 strategy.

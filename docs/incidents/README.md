@@ -4,14 +4,14 @@ Incidents are the foundation of every enforced rule. A rule without a linked inc
 
 ## Auto-capture (v3)
 
-Going forward, incidents are **auto-captured**. No manual mining required. Signals that trigger an incident issue in this repo:
+Going forward, incidents are partially auto-captured. The current template definitely auto-files CI-failure incidents. Other capture paths below are part of the intended design but are not fully shipped in `templates/repo-setup/` yet.
 
 | Signal | Detected by | Auto-logged as |
 |---|---|---|
-| `[override-reviewer: reason]` in a commit message | Post-commit hook in target repo (or CI) | Issue labeled `incident override` |
+| `[override-reviewer: reason]` in a commit message | PR audit today; issue filing still to be implemented | Advisory visibility in CI logs today |
 | CI failure after push on `main` | `.github/workflows/gate.yml` in target repo | Issue labeled `incident ci-fail` |
-| Commit containing `revert` or `fix the previous fix` | Post-commit hook | Issue labeled `incident revert` |
-| Reviewer subagent returned findings that were overridden | Stop hook in plugin logs a summary; if override, an issue | Issue labeled `incident reviewer-override` |
+| Commit containing `revert` or `fix the previous fix` | Planned post-commit or CI audit | Not yet shipped |
+| Reviewer subagent returned findings that were overridden | Planned reviewer-session logging | Not yet shipped |
 
 All issues land in this repo with the `incident` label and one of the sub-labels. Issue title format: `incident: YYYY-MM-DD <repo> <short description>`.
 

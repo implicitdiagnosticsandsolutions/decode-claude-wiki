@@ -12,38 +12,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
-      - name: Detect tier and run language gate
+          fetch-depth: 0
+      - name: Install language-gate dependencies
         run: |
           set -euo pipefail
-          # Determine changed files since base
+          if [ -f "package.json" ]; then
+            npm ci --no-audit --no-fund >/dev/null
+          fi
+          if grep -qE '\.py$' <(git ls-files) || [ -f "pyproject.toml" ] || [ -f "setup.py" ]; then
+            python -m pip install --upgrade pip >/dev/null
+            pip install ruff >/dev/null
+          fi
+      - name: Detect changes and run shared language gate
+        run: |
+          set -euo pipefail
           if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
             git diff --name-only "origin/${GITHUB_BASE_REF}"...HEAD > /tmp/changed.txt
           else
-            git diff --name-only HEAD~1..HEAD > /tmp/changed.txt
+            if git rev-parse HEAD~1 >/dev/null 2>&1; then
+              git diff --name-only HEAD~1..HEAD > /tmp/changed.txt
+            else
+              git ls-files > /tmp/changed.txt
+            fi
           fi
           echo "Changed files:"
           cat /tmp/changed.txt
-
-          FAIL=0
-
-          # Python
-          PY=$(grep -E '\.py$' /tmp/changed.txt || true)
-          if [ -n "$PY" ]; then
-            pip install ruff >/dev/null
-            echo "$PY" | xargs -r ruff check || FAIL=1
+          mapfile -t CHANGED < /tmp/changed.txt
+          if [ "${#CHANGED[@]}" -eq 0 ]; then
+            exit 0
           fi
-
-          # Node/TS/JS
-          JS=$(grep -E '\.(ts|tsx|js|jsx)$' /tmp/changed.txt || true)
-          if [ -n "$JS" ] && [ -f "package.json" ]; then
-            npm ci --no-audit --no-fund >/dev/null
-            if [ -x "node_modules/.bin/eslint" ]; then
-              echo "$JS" | xargs -r node_modules/.bin/eslint || FAIL=1
-            fi
-          fi
-
-          exit $FAIL
+          bash scripts/language-gate.sh "${CHANGED[@]}"
 
   override-audit:
     runs-on: ubuntu-latest

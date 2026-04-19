@@ -22,6 +22,7 @@ fi
 # Ensure hooks are executable
 chmod +x .githooks/* 2>/dev/null || true
 chmod +x .claude/hooks/*.sh 2>/dev/null || true
+chmod +x scripts/*.sh 2>/dev/null || true
 
 echo "[setup] Done. On your next commit, the reviewer-marker + language gate will run."
 echo "[setup] To bypass (with audit trail): git commit -m '... [override-reviewer: reason]'"

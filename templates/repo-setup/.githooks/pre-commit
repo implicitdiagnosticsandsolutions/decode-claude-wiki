@@ -1,91 +1,24 @@
 #!/usr/bin/env bash
 #
-# DECODE pre-commit gate — language/tier lint and artifact freshness check.
+# DECODE pre-commit gate — thin wrapper around the shared language gate.
 #
 # Split from commit-msg to match git hook semantics:
 # - pre-commit: runs before message is written. Cannot read commit message.
-#               Runs language lint + artifact freshness check.
+#               Runs language lint + artifact-suspicion checks.
 # - commit-msg: runs after message is written. Reads message from $1.
 #               Runs reviewer-marker check and override detection.
 #
-# Both must pass for the commit to succeed.
+# The actual gate logic lives in scripts/language-gate.sh so CI and local
+# hooks execute the same checks.
 
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
 
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR || true)
-
-# Nothing staged — nothing to check
-if [ -z "$STAGED_FILES" ]; then
-  exit 0
-fi
-
-FAIL=0
-
-# Python
-PY_STAGED=$(echo "$STAGED_FILES" | grep -E '\.py$' || true)
-if [ -n "$PY_STAGED" ]; then
-  if command -v ruff >/dev/null 2>&1; then
-    if ! echo "$PY_STAGED" | xargs ruff check; then
-      echo >&2 "[gate] ruff check failed on staged Python files"
-      FAIL=1
-    fi
-  else
-    echo >&2 "[gate] WARN: ruff not installed — skipping Python lint. Install ruff for full protection: pip install ruff"
-  fi
-fi
-
-# Node / TS / JS
-JS_STAGED=$(echo "$STAGED_FILES" | grep -E '\.(ts|tsx|js|jsx)$' || true)
-if [ -n "$JS_STAGED" ] && [ -f "package.json" ]; then
-  if [ -x "node_modules/.bin/eslint" ]; then
-    if ! echo "$JS_STAGED" | xargs node_modules/.bin/eslint; then
-      echo >&2 "[gate] eslint failed on staged JS/TS files"
-      FAIL=1
-    fi
-  else
-    echo >&2 "[gate] WARN: eslint not installed — skipping. Run 'npm install' first."
-  fi
-fi
-
-# R (soft-warn only; R tooling coverage varies across DECODE data repos)
-R_STAGED=$(echo "$STAGED_FILES" | grep -E '\.(R|r)$' || true)
-if [ -n "$R_STAGED" ] && command -v Rscript >/dev/null 2>&1; then
-  echo "$R_STAGED" | while IFS= read -r f; do
-    Rscript -e "lints <- tryCatch(lintr::lint('$f'), error = function(e) NULL); if (!is.null(lints) && length(lints) > 0) { cat(format(lints)); }" 2>/dev/null || true
-  done
-fi
-
-# Data-output freshness — artifact newer than any generator script = suspicious
-ARTIFACT_STAGED=$(echo "$STAGED_FILES" | grep -E '^(output|dist)/.*\.(csv|json|html|xlsx)$' || true)
-if [ -n "$ARTIFACT_STAGED" ] && [ -d "scripts" ]; then
-  NEWEST_GEN=$(find scripts/ -type f \( -name "*.py" -o -name "*.R" -o -name "*.js" -o -name "*.ts" \) -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | awk '{print $2}')
-  if [ -n "$NEWEST_GEN" ] && [ -f "$NEWEST_GEN" ]; then
-    GEN_MTIME=$(stat -c %Y "$NEWEST_GEN" 2>/dev/null || echo 0)
-    echo "$ARTIFACT_STAGED" | while IFS= read -r artifact; do
-      if [ -f "$artifact" ]; then
-        ART_MTIME=$(stat -c %Y "$artifact" 2>/dev/null || echo 0)
-        if [ "$ART_MTIME" -gt "$GEN_MTIME" ]; then
-          echo >&2 "[gate] WARNING: $artifact is newer than any script in scripts/ — did you edit the artifact without updating the generator? (rule 02)"
-        fi
-      fi
-    done
-  fi
-fi
-
-if [ "$FAIL" -ne 0 ]; then
-  cat >&2 <<EOF
-================================================================
-DECODE PRE-COMMIT GATE: language-tier gate failed.
-
-Fix the issues above and retry. To bypass with audit trail, add
-[override-reviewer: <reason>] to your commit message — the commit-msg
-hook will let the commit through with the override logged in git history.
-================================================================
-EOF
+if [ ! -x "scripts/language-gate.sh" ]; then
+  echo >&2 "[gate] ERROR: scripts/language-gate.sh not found or not executable"
   exit 1
 fi
 
-exit 0
+exec bash scripts/language-gate.sh

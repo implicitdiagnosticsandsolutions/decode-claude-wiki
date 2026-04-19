@@ -12,13 +12,13 @@ At the start of any new session in this repo, run `/plugin marketplace list`. If
 /plugin install superpowers@claude-plugins-official
 ```
 
-One-time per user per machine. `feature-dev` provides the `code-reviewer` subagent that the Stop hook dispatches (and `code-architect` for plan review). Without `feature-dev` installed, every commit touching source code will be blocked by the commit-msg gate.
+One-time per user per machine. `feature-dev` provides the `code-reviewer` subagent referenced by the reviewer procedure (and `code-architect` for plan review). Without `feature-dev` installed, every commit touching source code will be blocked by the commit-msg gate.
 
 Subsequent sessions refresh plugins automatically.
 
 ## Reviewer procedure
 
-Triggered by the Stop hook when the session modified substantive files and no fresh `.decode-reviewer-clean` marker exists. Steps, in order:
+Triggered by the Stop hook when the session modified substantive files and no fresh `.decode-reviewer-clean` marker exists. The Stop hook blocks session end and points the model back to this procedure. Steps, in order:
 
 1. Run `git diff HEAD` via Bash.
 2. Dispatch `feature-dev:code-reviewer` via the Agent tool. Pass the diff as context. Instruct: review only the changes, target latency under 90 seconds, report only blocking issues (confidence ≥ 80).
@@ -37,7 +37,7 @@ This repo enforces DECODE's Claude Code standards. The full rule catalog lives a
 
 **The short version — what you must follow:**
 
-1. **Reviewer subagent required before commit.** For any change that touches source code, generator scripts, or data outputs, dispatch the `feature-dev:code-reviewer` subagent before committing. The Stop hook does this automatically. Committing without a fresh `.decode-reviewer-clean` marker is blocked by `.githooks/commit-msg` unless the commit message contains `[override-reviewer: <reason>]`. Overrides are visible forever in `git log --grep="override-reviewer"`.
+1. **Reviewer subagent required before commit.** For any change that touches source code, generator scripts, or data outputs, dispatch the `feature-dev:code-reviewer` subagent before committing. The Stop hook blocks session end until this procedure is handled. Committing without a fresh `.decode-reviewer-clean` marker is blocked by `.githooks/commit-msg` unless the commit message contains `[override-reviewer: <reason>]`. Overrides are visible forever in `git log --grep="override-reviewer"`.
 
 2. **Verify before claiming.** Before saying "X works", "it's documented", or "it's in memory", run a concrete check. Paste the output. "Should" is a red flag — replace it with a check.
 
@@ -46,6 +46,19 @@ This repo enforces DECODE's Claude Code standards. The full rule catalog lives a
 4. **Stage files explicitly.** Never `git add -A` or `git add .`. Name each file.
 
 5. **No AI attribution in commits.** Conventional format, human author.
+
+## Optional final cleanup
+
+This template also ships a repo-local `deslop` skill under `.claude/skills/deslop/`.
+
+Use it after a change already works and before commit when you want a final pass focused on:
+
+- removing unnecessary wrappers or indirection
+- preserving source-of-truth files and types
+- catching debug leftovers and placeholder comments
+- reducing AI slop without widening scope
+
+`deslop` is advisory, not a hard gate.
 
 ## First-time setup in this repo
 

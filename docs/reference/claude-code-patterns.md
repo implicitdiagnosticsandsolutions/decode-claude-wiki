@@ -28,7 +28,7 @@ Sources:
 
 Anthropic-officially-supported mechanism for distributing plugins (skills, slash commands, hooks) to a team via a GitHub repo. Users run `/plugin marketplace add owner/repo` once, then `/plugin install <plugin-name>@<marketplace-name>`.
 
-Designed for exactly the team-skills-distribution problem. We'll use this repo as a marketplace.
+Designed for exactly the team-skills-distribution problem. For DECODE, we use Anthropic's official marketplace for productivity plugins and keep DECODE-specific enforcement in repo-committed hooks rather than publishing our own marketplace.
 
 Sources:
 - [Plugin marketplaces — Claude Code Docs](https://code.claude.com/docs/en/plugin-marketplaces)

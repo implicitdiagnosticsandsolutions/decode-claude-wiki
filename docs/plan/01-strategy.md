@@ -5,7 +5,7 @@ Supersedes v2. v2 is preserved in [`02-reviewer-critique.md`](02-reviewer-critiq
 ## What changed from v2
 
 - **Cut the wave model.** No Wave 1 / Wave 2. Replaced with per-repo PRs applied from a template.
-- **Cut manual incident mining.** Replaced with auto-capture from commit messages + CI failures + reverts.
+- **Cut manual incident mining as the target state.** CI-failure auto-capture is shipped first; override/revert capture still needs template work.
 - **Cut the "rollout owner talks to each team" step.** Kleo + supervisor coordinate; target-repo owners see a PR in their inbox.
 - **Verified the plugin auto-prompt mechanism.** `extraKnownMarketplaces` + `enabledPlugins` in project-level settings.json triggers a one-click install prompt on first session. Hooks committed directly in each repo fire with zero prompts.
 - **Added strong override.** `[override-reviewer: reason]` in commit message required to bypass the reviewer gate. Bypasses are visible in `git log` forever.
@@ -17,12 +17,12 @@ Supersedes v2. v2 is preserved in [`02-reviewer-critique.md`](02-reviewer-critiq
 
 A `commit-msg` git hook refuses commits that touch substantive files unless:
 
-- `.claude/.reviewer-clean` exists and references the current HEAD (freshly written by the reviewer subagent this session), OR
+- `.decode-reviewer-clean` exists and references the current HEAD (freshly written by the reviewer procedure this session), OR
 - Commit message contains `[override-reviewer: <reason>]`.
 
 `commit-msg` (not `pre-commit`) is used because git passes the commit message file only to `commit-msg` — the override marker cannot be detected in `pre-commit`.
 
-The reviewer subagent is `feature-dev:code-reviewer` from Anthropic's official marketplace. A Stop hook in each target repo dispatches it automatically when a session touched substantive files. So for vibe coders, the flow is invisible — model edits → Stop hook runs reviewer → reviewer writes marker if clean → commit succeeds.
+The reviewer subagent is `feature-dev:code-reviewer` from Anthropic's official marketplace. A Stop hook in each target repo blocks session end when a session touched substantive files and no fresh marker exists. The model is then expected to run the reviewer procedure, write the marker if clean, or surface findings.
 
 **Override is strong, not weak.** An env var would be invisible; the commit-message marker shows up in `git log --grep="override-reviewer"` — every bypass is auditable forever.
 
@@ -32,12 +32,12 @@ The reviewer subagent is `feature-dev:code-reviewer` from Anthropic's official m
 
 | Detection | Gate |
 |---|---|
-| Staged `.py` files | `ruff check`; if `pytest.ini`/`pyproject.toml` present, `pytest -x` on affected paths |
-| Staged `.ts` / `.tsx` / `.js` | `eslint`; if `vitest.config.*`, `vitest run --changed` |
-| Staged `.R` / `.r` | `lintr` (skipped if not installed — soft fail with warning, not a gate) |
-| Staged artifact under `output/` or `dist/` (`.csv`, `.json`, `.html`, `.xlsx`) | Last-modified time of the artifact must be newer than the last-modified time of any generator script in `scripts/` — catches "edited the artifact, forgot the generator" |
+| Staged `.py` files | `ruff check` |
+| Staged `.ts` / `.tsx` / `.js` | `eslint` when already installed in the repo |
+| Staged `.R` / `.r` | `lintr` (skipped if not installed — soft warning, not a gate) |
+| Staged artifact under `output/` or `dist/` (`.csv`, `.json`, `.html`, `.xlsx`) | Warn if no staged generator change exists under `scripts/` alongside the artifact change |
 
-Exit non-zero on any gate failure. CI runs the same script as a bypass-safety net for users who skipped `scripts/setup.sh`.
+Exit non-zero on deterministic gate failure. CI runs the same shared script as a bypass-safety net for users who skipped `scripts/setup.sh`.
 
 ## Delivery mechanics
 
@@ -49,7 +49,7 @@ Every in-scope repo gets the same PR structure, generated from `templates/repo-s
 .claude/
   settings.json              # ← committed, fires on git pull inside Claude Code
   hooks/
-    reviewer-stop.sh
+    reviewer-stop.sh            # blocks session end until reviewer procedure is handled
     block-dangerous-git.sh
     block-env-writes.sh
 .githooks/
@@ -58,7 +58,7 @@ Every in-scope repo gets the same PR structure, generated from `templates/repo-s
 scripts/
   setup.sh                   # ← one-time: git config core.hooksPath .githooks
 CLAUDE.md                    # ← 5 hard rules, pointing at this wiki for the why
-.gitignore                   # ← excludes .claude/.reviewer-clean / .reviewer-findings.md
+.gitignore                   # ← excludes .decode-reviewer-clean / .decode-reviewer-findings.md
 .github/workflows/
   gate.yml                   # ← CI runs language gate; files incident issue on failure
 ```
@@ -81,7 +81,7 @@ See [`03-rollout-status.md`](03-rollout-status.md).
 
 - Productivity plugins sourced from `anthropics/claude-plugins-official` (feature-dev, code-simplifier, claude-md-management, superpowers)
 - Reviewer subagent + plan-reviewer skill + incident-logger skill in the plugin
-- Stop hook that proactively dispatches the reviewer
+- Stop hook that blocks session end until the reviewer procedure is handled
 - Pre-commit gate with reviewer-marker + language checks
 - CI backstop
 - Auto-incident filing to this repo on override / CI fail / revert
@@ -99,8 +99,8 @@ Only one axis matters: **what language is the repo**. Detection is automatic fro
 
 | Tier | Detection | Pre-commit gate | Git lockdown scope |
 |---|---|---|---|
-| `python` | `pyproject.toml` or `setup.py` or mostly `.py` files | `ruff` + `pytest` | Narrow: `--force`, `reset --hard`, `clean -f`, `branch -D` only |
-| `node` | `package.json` | `eslint` + `vitest` | Wide: above + `checkout .`, `restore .` |
+| `python` | `pyproject.toml` or `setup.py` or mostly `.py` files | `ruff` | Narrow: `--force`, `reset --hard`, `clean -f`, `branch -D` only |
+| `node` | `package.json` | `eslint` | Wide: above + `checkout .`, `restore .` |
 | `r` | `.Rproj` or mostly `.R` files | `lintr` | Narrow |
 | `mixed` | multiple of above | Run all applicable gates | Narrow |
 | `docs` | no source files (Markdown / PPTX / etc.) | No gate, just reviewer marker | Narrow |

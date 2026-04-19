@@ -10,17 +10,20 @@ Copy-paste source for the hardening PR applied to each in-scope DECODE repo.
                                 # enables feature-dev + code-simplifier + claude-md-management + superpowers,
                                 # wires the Claude Code hooks, pre-approves reviewer tool calls
   hooks/
-    reviewer-stop.sh            # Stop: dispatch the reviewer subagent
+    reviewer-stop.sh            # Stop: blocks session end until reviewer procedure is run
     block-dangerous-git.sh      # PreToolUse(Bash): block destructive git
     block-env-writes.sh         # PreToolUse(Edit/Write): block .env / credentials
+  skills/
+    deslop/SKILL.md             # repo-local final cleanup pass before commit (advisory)
 .githooks/
-  pre-commit                    # language-tier gate (ruff/eslint/lintr + artifact freshness)
+  pre-commit                    # thin wrapper around scripts/language-gate.sh
   commit-msg                    # reviewer-marker check + strong override detection
 scripts/
   setup.sh                      # one-time: git config core.hooksPath .githooks
+  language-gate.sh              # shared deterministic gate for local hooks + CI
 .github/workflows/
   gate.yml                      # CI runs the language gate; files incidents on failure
-.gitignore                      # excludes .claude/.reviewer-clean and .reviewer-findings.md
+.gitignore                      # excludes .decode-reviewer-* markers
 CLAUDE.md.template              # rules import; target repo fills in the per-repo section
 ```
 
@@ -42,7 +45,7 @@ cd <this-repo>
 rsync -av --exclude README.md --exclude CLAUDE.md.template templates/repo-setup/ "$TARGET/"
 # Template → real CLAUDE.md for target repo
 cp templates/repo-setup/CLAUDE.md.template "$TARGET/CLAUDE.md"   # or merge with existing
-chmod +x "$TARGET/.claude/hooks/"*.sh "$TARGET/.githooks/pre-commit" "$TARGET/scripts/setup.sh"
+chmod +x "$TARGET/.claude/hooks/"*.sh "$TARGET/.githooks/"* "$TARGET/scripts/"*.sh
 # In target repo: commit, push, open PR
 cd "$TARGET"
 git checkout -b feature/claude-code-hardening
@@ -65,7 +68,7 @@ The pre-commit gate auto-detects tier from files present in the target repo:
 | `.Rproj` / majority `.R` files | `r` |
 | None of the above, mostly Markdown / PPTX / XLSX | `docs` |
 
-Tier only affects which lint / test commands run. The reviewer-marker check and dangerous-git block are tier-independent (with the dangerous-git scope narrower for data tiers — see the plugin's hook source).
+Tier only affects which lint commands run. The reviewer-marker check and dangerous-git block are tier-independent (with the dangerous-git scope narrower for data tiers — see the hook source).
 
 ## Updating the template
 
@@ -76,4 +79,4 @@ All target repos will drift. When this template changes:
    - (preferred) open a small PR that cherry-picks the relevant changes, or
    - (future) have a scheduled workflow in this repo open PRs automatically.
 
-All productivity plugins are sourced from Anthropic's official marketplace (`anthropics/claude-plugins-official`) — updates come from upstream automatically on session start. DECODE does not maintain its own plugin marketplace.
+All productivity plugins are sourced from Anthropic's official marketplace (`anthropics/claude-plugins-official`) — updates come from upstream automatically on session start. DECODE does not maintain its own plugin marketplace. The template also ships one repo-local skill, `deslop`, under `.claude/skills/` for advisory cleanup before commit.

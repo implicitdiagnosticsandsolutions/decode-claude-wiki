@@ -57,7 +57,7 @@ Decisions still pending. Resolved questions moved to the bottom.
 
 ### ~~Q: Does the plugin auto-install mechanism work for arbitrary org repos?~~ Resolved 2026-04-15
 
-**Answer:** Yes. `extraKnownMarketplaces` + `enabledPlugins` in project `.claude/settings.json` triggers a one-click install prompt on first session when the user trusts the folder. Updates ship from the marketplace repo on subsequent sessions. True zero-click auto-install is a feature request not yet shipped, but one prompt per user per machine is acceptable for our "git pull = hardened" goal.
+**Answer:** Yes. `extraKnownMarketplaces` + `enabledPlugins` in project `.claude/settings.json` triggers a one-click install prompt on first session when the user trusts the folder. Updates ship from the marketplace repo on subsequent sessions. True zero-click auto-install is a feature request not yet shipped, so the honest claim is "repo hooks and CI harden on pull; plugin skills prompt once per user per machine."
 
 See [`../reference/claude-code-patterns.md`](../reference/claude-code-patterns.md) for sources.
 
@@ -67,7 +67,7 @@ See [`../reference/claude-code-patterns.md`](../reference/claude-code-patterns.m
 
 ### ~~Q: How do non-programmers use this?~~ Answered by design
 
-The design assumes vibe coding. The non-programmer interaction is: describe what you want → Claude edits → Stop hook runs reviewer → reviewer reports clean or findings → if findings, Claude iterates → commit. No direct tool invocation required. The plan for Juliane/Dirk-style contributors is no different from the plan for anyone else.
+The design assumes vibe coding. The non-programmer interaction is intended to be: describe what you want → Claude edits → Stop hook forces the reviewer procedure when substantive files changed → reviewer reports clean or findings → if findings, Claude iterates → commit. No direct tool invocation should be required from Juliane/Dirk-style contributors once the template behavior is fully tuned.
 
 ### ~~Q: Sentry/monitoring coverage across Wave 1 repos?~~ Scoped out of v3
 

@@ -1,15 +1,15 @@
 # decode-claude-wiki
 
-Standards, rules, plugin marketplace, and rollout coordination for Claude Code usage across DECODE's GitHub org (`implicitdiagnosticsandsolutions`).
+Standards, rules, rollout coordination, and per-repo hardening templates for Claude Code usage across DECODE's GitHub org (`implicitdiagnosticsandsolutions`).
 
 ## What this repo is
 
 1. **A template for hardening any DECODE repo.** `templates/repo-setup/` is copy-pasted into each in-scope repo as a single PR, adding `.claude/` hooks, `.githooks/{pre-commit,commit-msg}` gates, `CLAUDE.md`, and `.github/workflows/gate.yml` CI backstop.
 2. **The rollout tracker + open decisions.** `docs/plan/` has the current strategy, rollout status per repo, and open questions.
-3. **The incident log.** `docs/incidents/` — real failures that justify each rule. Auto-captured from override markers, CI failures, and revert commits going forward.
+3. **The incident log.** `docs/incidents/` — real failures that justify each rule. CI failures are auto-captured today; other incident capture paths are documented and still being hardened.
 4. **The rules catalog.** `docs/rules/` — the library of hard rules the target repos enforce.
 
-Target repos install productivity plugins (`feature-dev`, `code-simplifier`, `claude-md-management`, `superpowers`) directly from Anthropic's official marketplace. This repo does not publish its own plugin marketplace — hooks ship as repo-committed files, plugins come from upstream.
+Target repos install productivity plugins (`feature-dev`, `code-simplifier`, `claude-md-management`, `superpowers`) directly from Anthropic's official marketplace. This repo does not publish its own plugin marketplace — hooks ship as repo-committed files, plugins come from upstream. The template also includes a repo-local `deslop` skill for advisory final cleanup before commit.
 
 ## What this repo is NOT
 
@@ -23,6 +23,8 @@ Target repos install productivity plugins (`feature-dev`, `code-simplifier`, `cl
 |---|---|
 | Reading for the first time | [`docs/plan/00-overview.md`](docs/plan/00-overview.md) |
 | Owning the rollout | [`docs/plan/03-rollout-status.md`](docs/plan/03-rollout-status.md) + [`templates/repo-setup/README.md`](templates/repo-setup/README.md) |
+| Deciding whether a repo is ready for more autonomy | [`docs/reference/repo-readiness-checklist.md`](docs/reference/repo-readiness-checklist.md) |
+| Aligning on the operating model | [`docs/reference/decode-agentic-coding-model.md`](docs/reference/decode-agentic-coding-model.md) |
 | Reviewing an auto-captured incident | [`docs/incidents/README.md`](docs/incidents/README.md) |
 | Editing reviewer behavior | Adjust the "Reviewer procedure" section in `templates/repo-setup/CLAUDE.md.template`. The reviewer itself is `feature-dev:code-reviewer` from `anthropics/claude-plugins-official`, not a DECODE-owned agent. |
 | Adding a hook to all target repos | Edit the relevant file under `templates/repo-setup/.claude/hooks/` and `.githooks/`, then open a PR against each target repo to sync the change. |
@@ -38,7 +40,7 @@ Target repos install productivity plugins (`feature-dev`, `code-simplifier`, `cl
 decode-claude-wiki/
 ├── templates/
 │   └── repo-setup/                   # copy-paste source for per-repo PRs
-│       ├── .claude/                  # settings.json + hooks (repo-committed)
+│       ├── .claude/                  # settings.json + hooks + local skills (repo-committed)
 │       ├── .githooks/                # pre-commit + commit-msg gates
 │       ├── .github/workflows/        # CI backstop
 │       ├── scripts/setup.sh          # core.hooksPath wiring
