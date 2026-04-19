@@ -24,7 +24,7 @@ We are not rolling out coding standards to engineers. We are **harnessing vibe c
 
 A **commit-msg hook** blocks any commit that touches substantive files (source code, generator scripts, data-output JSON/CSV/HTML, notebooks) unless one of:
 
-- A `.decode-reviewer-clean` marker file exists, freshly written by the reviewer procedure in this session, referencing the current HEAD commit.
+- A `.decode-reviewer-clean` marker file exists, freshly written by the reviewer procedure in this session, binding to both the current HEAD commit and a content hash of `git diff HEAD` (any edit after review invalidates the marker).
 - The commit message contains `[override-reviewer: <reason>]`. The reason is public in `git log` forever.
 
 (The marker check lives in `commit-msg`, not `pre-commit`, because only `commit-msg` receives the commit message as a file. `pre-commit` runs first for language lint but cannot read the intended message.)

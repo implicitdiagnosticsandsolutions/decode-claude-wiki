@@ -29,11 +29,19 @@ if ! echo "$MODIFIED" | grep -qE "$PATTERNS"; then
   exit 0
 fi
 
+# Marker format (one line): <HEAD-SHA> <DIFF-HASH> <ISO-8601-UTC-timestamp>
+# DIFF-HASH = git hash-object --stdin < (git diff HEAD). Binding to the
+# diff content — not just HEAD — means any edit made after the reviewer
+# cleared invalidates the marker.
 MARKER=".decode-reviewer-clean"
 if [ -f "$MARKER" ]; then
   MARKED_SHA=$(awk 'NR==1 {print $1}' "$MARKER" 2>/dev/null || echo "")
+  MARKED_DIFF=$(awk 'NR==1 {print $2}' "$MARKER" 2>/dev/null || echo "")
   CURRENT_SHA=$(git rev-parse HEAD 2>/dev/null || echo "initial")
-  if [ "$MARKED_SHA" = "$CURRENT_SHA" ]; then
+  CURRENT_DIFF=$(git diff HEAD 2>/dev/null | git hash-object --stdin 2>/dev/null || echo "")
+  if [ -n "$MARKED_SHA" ] && [ -n "$MARKED_DIFF" ] \
+     && [ "$MARKED_SHA" = "$CURRENT_SHA" ] \
+     && [ "$MARKED_DIFF" = "$CURRENT_DIFF" ]; then
     exit 0
   fi
 fi
