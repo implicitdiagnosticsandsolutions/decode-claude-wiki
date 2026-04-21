@@ -10,7 +10,7 @@ status: draft  # one of: draft, ready, shipped. "ready" requires non-empty incid
 
 # NN. Rule title
 
-> **Hard requirement:** the `incidents:` frontmatter MUST have at least one entry pointing at a real file in `../incidents/`. A rule with zero incidents is not a rule — it is a suggestion. If this is a port from `social-media-analytics` and no DECODE incident exists yet, the frontmatter must still reference the source rule file (e.g. `../incidents/ported_sma_rule_NN.md`) and that port file must exist with the source incident details.
+> **Hard requirement:** the `incidents:` frontmatter MUST have at least one entry pointing at a real file in `../incidents/`. A rule with zero incidents is not a rule — it is a suggestion.
 
 ## Rule statement
 

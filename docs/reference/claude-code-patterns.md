@@ -74,27 +74,8 @@ strategy-suite/
 - `session-reflect.sh` pattern: PreCompact hook emits an instruction forcing the model to save session learnings to memory before context is lost.
 - Architectural invariants table in CLAUDE.md: file-level sources of truth with "if you change this, `grep -r` all consumers" discipline.
 
-## Reference implementation 2 — `social-media-analytics`
-
-Chris's multi-client data analytics monorepo. Different stack (Python), different problem domain, but the same "sloppy primary user" dynamic.
-
-**Key patterns:**
-
-- 17 HARD RULES at the top of CLAUDE.md, each tied to a specific incident with date, commit SHA, and cost. This is the gold standard for rule authorship — every rule is a scar.
-- `.githooks/pre-commit` with a typo gate — runs a Python script that validates every number in a client-message draft traces to a committed machine-readable source. Enabled via `git config core.hooksPath .githooks`.
-- Repo-tracked auto-memory: `~/.claude/projects/.../memory/` is symlinked into the repo, so memory edits land as reviewable git commits. Portable across machines.
-- Reviewer-agent discipline codified as Rule 5: "non-trivial changes must get a second-opinion review."
-- Ground-truth discipline for data work (Rules 12/13/16/17): shipped HTML is source of truth, Python replicas must gate against it with jsdom, gates cover every cell not just headlines, path-selection before citation.
-
-**Patterns we're porting:**
-
-- Incident-anchored rule writing.
-- `.githooks/pre-commit` as the mandatory-rail gate.
-- Data-tier rules (12/13/16/17) to DECODE's data repos with re-anchoring where possible.
-- Repo-tracked memory pattern — candidate for DECODE too, deferred to a later wave.
-
 ## Key insight
 
-Both reference implementations converge on: **the model is a collaborator, not a contractor.** Trust it to do the work but enforce the rails with hooks and gates. CLAUDE.md alone is not enforcement.
+The reference implementation converges on: **the model is a collaborator, not a contractor.** Trust it to do the work but enforce the rails with hooks and gates. CLAUDE.md alone is not enforcement.
 
 The DECODE rollout inherits this.
