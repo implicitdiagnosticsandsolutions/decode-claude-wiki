@@ -15,25 +15,33 @@ Each rule file has:
 - **Tiers** — which target-repo tiers import this rule.
 - **Status** — `draft`, `ready`, `shipped`.
 
-## Hard requirement
+## Hard requirement for `shipped`
 
-**A rule with empty `incidents:` frontmatter is not ship-ready.** The template enforces this at the frontmatter level. Lifecycle:
+A rule is `shipped` only when BOTH conditions hold:
 
-1. Incident file exists in `../incidents/`.
-2. Rule drafted here with `status: draft` and non-empty `incidents:` list.
-3. Rule reviewed and marked `status: ready`.
-4. Rule shipped — imported into target-repo CLAUDE.md template; enforcement (hook / gate) lands in the same commit.
-5. Rule tracked — new violations link back to the rule as "existed but not followed."
+- **Active enforcement** in target-repo templates (hook, gate, or CI check).
+- **Documented justification** — either a linked incident in `../incidents/` (preferred; "a rule with a scar is the strongest rule"), or a `proactive-risk` note in the rule's `## Why` section explaining the threat model or standard the rule closes against.
+
+Rules with enforcement but no past incident are shipped with `justification: proactive-risk`. As incidents accumulate over time, they're appended to the rule's `incidents:` list and the justification flips to `incident`.
+
+Rules with neither a scar nor an enforcement path are `draft` — suggestions, not rules.
+
+Lifecycle:
+
+1. Drafted with `status: draft` and `justification: incident|proactive-risk` in frontmatter. Justification rationale filled in the `## Why` section.
+2. Reviewed and marked `status: ready` once text is reviewer-approved.
+3. Shipped — enforcement lands in target-repo CLAUDE.md template in the same commit that sets `status: shipped`.
+4. Tracked — new violations link back to the rule as "existed but not followed"; add incidents to `incidents:` frontmatter as they happen.
 
 ## Candidate rules — draft set
 
-These are drafts. No rule ships until it has a linked incident file.
+Rules are at various stages. Rules 02, 03, 05, and 08 are shipped with active enforcement. The remainder are drafts — suggestions until enforcement lands.
 
 | # | Rule statement (draft) | Status | Incident source |
 |---|---|---|---|
 | 01 | Before citing a file, path, command, or memory reference, open it and confirm it contains what you claim. | draft | Pending DECODE incident |
-| 02 | Before editing a file produced by a script, locate the generator. Patch the generator, regenerate, verify byte-identical. | draft | Pending DECODE incident; enforced by hook today |
-| 03 | For any change that modifies source code, generator scripts, methodology, data outputs, or architectural invariants, dispatch the reviewer subagent before committing. | draft | Pending DECODE incident; enforced by hook today |
+| 02 | Before editing a file produced by a script, locate the generator. Patch the generator, regenerate, and verify the output matches what you intended. | shipped | Proactive-risk; enforced via `language-gate.sh` advisory + reviewer subagent. File: [02_patch-the-source.md](02_patch-the-source.md) |
+| 03 | For any change that modifies source code, generator scripts, methodology, data outputs, or architectural invariants, dispatch the reviewer subagent before committing. | shipped | Proactive-risk; enforced via `reviewer-stop.sh` + `commit-msg` gate. File: [03_reviewer-subagent-required.md](03_reviewer-subagent-required.md) |
 | 04 | Stage files explicitly. Never `git add -A` or `git add .`. | draft | Pending DECODE incident |
 | 05 | No AI attribution in commits. Conventional format, human author. | shipped | Enforced via supervisor's global CLAUDE.md |
 | 06 | When creating a new doc under `docs/`, add it to `docs/INDEX.md` (if the repo has one) in the same commit. | draft | Ported from strategy-suite `check-doc-index.sh` |
