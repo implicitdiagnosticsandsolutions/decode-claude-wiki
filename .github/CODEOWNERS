@@ -1,0 +1,8 @@
+# CODEOWNERS for decode-claude-wiki
+# Default reviewers for any change. Branch protection requires their
+# approval for developer PRs; they bypass it for their own self-merges.
+*                  @matussekatdecode @DomDecode
+
+# Lock down the CODEOWNERS file itself — changes require approval from
+# named admins or existing code reviewers (prevents silent edits).
+.github/CODEOWNERS @DomDecode @FloWeinert @matussekatdecode
