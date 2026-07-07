@@ -37,8 +37,8 @@ Decisions still pending. Resolved questions moved to the bottom.
 
 **Owner:** Kleo (observes during pilot)
 **Blocks:** Nothing — empirical question for the pilot
-**Resolution:** Track latency during the `icat_results` pilot. If >60s median, consider switching to a lighter-weight reviewer (diff-only, skip codebase exploration) by default.
-**Status:** ⬜ Track during pilot
+**Resolution:** Keep the reviewer gate, but add a sanctioned small mechanical change fast path. For localized pattern-copy work, agents skip brainstorming/spec/plan/subagent-driven-development and run one reviewer pass over the final diff instead of one pass per micro-task.
+**Status:** ✅ Fast path added to the template and reviewer rule after PBI_team_utils feedback from Silke on 2026-07-07. Continue monitoring reviewer latency; if the final-diff reviewer itself remains slow, revisit the reviewer prompt or use a lighter diff-only reviewer.
 
 ---
 

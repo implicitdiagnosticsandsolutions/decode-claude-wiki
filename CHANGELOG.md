@@ -2,6 +2,11 @@
 
 One line per meaningful change. Dated.
 
+## 2026-07-07
+
+- **Small mechanical change fast path added.** Template `CLAUDE.md` and Rule 03 now allow localized pattern-copy fixes to skip brainstorming/spec/plan/subagent-driven-development while preserving one reviewer pass over the final diff before commit. Added after PBI_team_utils feedback where a small conditional-formatting change triggered multiple reviewer passes and high wall-clock overhead.
+- **Reviewer payload aligned with reviewer hash.** Added `scripts/reviewer-diff.sh` to the template so reviewer context includes untracked file contents, matching the stage-invariant `reviewer-hash.sh` marker logic.
+
 ## 2026-04-19
 
 - **Shared language gate added.** `templates/repo-setup/scripts/language-gate.sh` is now the single deterministic lint gate used by both local `pre-commit` and CI.

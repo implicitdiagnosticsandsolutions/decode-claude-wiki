@@ -24,7 +24,7 @@ We are not rolling out coding standards to engineers. We are **harnessing vibe c
 
 A **commit-msg hook** blocks any commit that touches substantive files (source code, generator scripts, data-output JSON/CSV/HTML, notebooks) unless one of:
 
-- A `.decode-reviewer-clean` marker file exists, freshly written by the reviewer procedure in this session, binding to both the current HEAD commit and a content hash of `git diff HEAD` (any edit after review invalidates the marker).
+- A `.decode-reviewer-clean` marker file exists, freshly written by the reviewer procedure in this session, binding to both the current HEAD commit and a staged content hash produced by `scripts/reviewer-hash.sh --staged` (the exact payload Git is about to commit, including added and deleted files).
 - The commit message contains `[override-reviewer: <reason>]`. The reason is public in `git log` forever.
 
 (The marker check lives in `commit-msg`, not `pre-commit`, because only `commit-msg` receives the commit message as a file. `pre-commit` runs first for language lint but cannot read the intended message.)
@@ -58,6 +58,8 @@ One PR per in-scope repo. The PR adds:
   commit-msg                    # reviewer-marker check + strong override detection
 scripts/
   setup.sh                      # one-time: git config core.hooksPath .githooks
+  reviewer-diff.sh              # reviewer payload for staged commits; --all for workspace diagnostics
+  reviewer-hash.sh              # reviewer marker hash for staged commits; --all for Stop-hook checks
 CLAUDE.md                       # 5 hard rules, pointing at the wiki for why
 .gitignore                      # excludes .decode-reviewer-clean / .decode-reviewer-findings.md
 .github/workflows/

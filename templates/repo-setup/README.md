@@ -21,6 +21,8 @@ Copy-paste source for the hardening PR applied to each in-scope DECODE repo.
 scripts/
   setup.sh                      # one-time: git config core.hooksPath .githooks
   language-gate.sh              # shared deterministic gate for local hooks + CI
+  reviewer-diff.sh              # reviewer payload for staged commits; --all for workspace diagnostics
+  reviewer-hash.sh              # reviewer marker hash for staged commits; --all for Stop-hook checks
 .github/workflows/
   gate.yml                      # CI runs the language gate; files incidents on failure
 .gitignore                      # excludes .decode-reviewer-* markers

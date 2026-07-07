@@ -20,16 +20,64 @@ Subsequent sessions refresh plugins automatically.
 
 Triggered by the Stop hook when the session modified substantive files and no fresh `.decode-reviewer-clean` marker exists. The Stop hook blocks session end and points the model back to this procedure. Steps, in order:
 
-1. Run `git diff HEAD` via Bash.
-2. Dispatch `feature-dev:code-reviewer` via the Agent tool. Pass the diff as context. Instruct: review only the changes, target latency under 90 seconds, report only blocking issues (confidence ≥ 80).
-3. When the reviewer returns:
-   - **No blocking issues** → compute `HEAD_SHA=$(git rev-parse HEAD)` and `DIFF_HASH=$(git diff HEAD | git hash-object --stdin)`, then Write `.decode-reviewer-clean` with exactly one line: `<HEAD-SHA> <DIFF-HASH> <ISO-8601-UTC-timestamp>`.
+1. Stage the intended final commit explicitly. Do not use `git add -A` or `git add .`.
+2. Run `bash scripts/reviewer-diff.sh --staged` via Bash. If there are substantive unstaged leftovers, either stage them intentionally or set them aside before review.
+3. Dispatch `feature-dev:code-reviewer` via the Agent tool. Pass the full reviewer diff output as context. Instruct: review only the staged changes, target latency under 90 seconds, report only blocking issues (confidence ≥ 80).
+4. When the reviewer returns:
+   - **No blocking issues** → compute `HEAD_SHA=$(git rev-parse HEAD)` and `DIFF_HASH=$(bash scripts/reviewer-hash.sh --staged)`, then Write `.decode-reviewer-clean` with exactly one line: `<HEAD-SHA> <DIFF-HASH> <ISO-8601-UTC-timestamp>`. The hash helper covers the exact staged commit payload, including added files, deleted files, and file-mode changes; do not substitute a plain `git diff | git hash-object` pipe.
    - **Blocking issues** → Write `.decode-reviewer-findings.md` with the list. Do NOT write `.decode-reviewer-clean`.
-4. Return.
+5. Return.
 
 If the `feature-dev` plugin is not installed, stop and ask the user to run `/plugin install feature-dev@claude-plugins-official`.
 
-The `commit-msg` git hook blocks commits unless the marker's HEAD and DIFF hashes both match the current repo state, or the commit message contains `[override-reviewer: <reason>]`. Binding to the diff content means any edit made after review invalidates the marker. Overrides are visible forever in `git log --grep="override-reviewer"`.
+The `commit-msg` git hook blocks commits unless the marker's HEAD and staged DIFF hashes both match the commit payload, or the commit message contains `[override-reviewer: <reason>]`. Binding to the staged diff content means the reviewed content and committed content cannot silently diverge. Overrides are visible forever in `git log --grep="override-reviewer"`.
+
+## Small mechanical change fast path
+
+Use this path when the task is a localized, low-uncertainty pattern copy or
+small fix, for example "apply the same conditional formatting already used in
+one sheet spec to two analogous sheet specs."
+
+Fast-path eligibility:
+
+- the intended change is easy to state in one sentence;
+- there is an existing nearby pattern to copy or extend;
+- no public API, schema, data model, methodology, security, permission, or
+  generated-output contract changes;
+- no broad refactor, dependency change, migration, or cross-repo behavior
+  change;
+- the agent can name the focused verification command before editing.
+- if unsure whether the change qualifies, use the normal workflow.
+
+Eligible examples:
+
+- copy an already existing formatting rule to another analogous config block;
+- fix a typo in a user-facing label and update the matching snapshot/test;
+- add one missing test case for an already implemented branch.
+
+Not eligible:
+
+- adding a new workflow, feature, command, or data output;
+- changing business logic, permission behavior, schemas, prompts, or APIs;
+- touching generated artifacts without updating and rerunning the generator.
+
+For eligible tasks, skip brainstorming, spec documents, multi-step
+implementation plans, and subagent-driven development. Do one direct
+implementation pass, run the focused verification, then run exactly one
+reviewer procedure over the final diff before committing.
+
+Do not split a fast-path task into multiple commits merely because a workflow
+template suggests "one commit per task." For small mechanical changes, the
+whole user request is the task. If the diff grows, tests fail for unclear
+reasons, or design uncertainty appears, leave the fast path and use the normal
+workflow.
+
+The fast path does **not** bypass:
+
+- the reviewer subagent before commit;
+- explicit file staging;
+- deterministic verification before claiming the change works;
+- the patch-source rule for generated artifacts.
 
 ## DECODE base rules
 
@@ -37,7 +85,7 @@ This repo enforces DECODE's Claude Code standards. The full rule catalog lives a
 
 **The short version — what you must follow:**
 
-1. **Reviewer subagent required before commit.** For any change that touches source code, generator scripts, or data outputs, dispatch the `feature-dev:code-reviewer` subagent before committing. The Stop hook blocks session end until this procedure is handled. Committing without a fresh `.decode-reviewer-clean` marker is blocked by `.githooks/commit-msg` unless the commit message contains `[override-reviewer: <reason>]`. Overrides are visible forever in `git log --grep="override-reviewer"`.
+1. **Reviewer subagent required before commit.** For any change that touches source code, generator scripts, or data outputs, dispatch the `feature-dev:code-reviewer` subagent before committing. Small mechanical changes may use the fast path above, but still get one reviewer pass over the final diff. The Stop hook blocks session end until this procedure is handled. Committing without a fresh `.decode-reviewer-clean` marker is blocked by `.githooks/commit-msg` unless the commit message contains `[override-reviewer: <reason>]`. Overrides are visible forever in `git log --grep="override-reviewer"`.
 
 2. **Verify before claiming.** Before saying "X works", "it's documented", or "it's in memory", run a concrete check. Paste the output. "Should" is a red flag — replace it with a check.
 
