@@ -22,7 +22,7 @@ PATTERNS='\.(py|ts|tsx|js|jsx|R|r|java|sql)$|^scripts/|^output/|^dist/'
 MODIFIED=$( {
   git diff --name-only --diff-filter=ACMRD HEAD 2>/dev/null || true
   git ls-files --others --exclude-standard 2>/dev/null || true
-  git diff --cached --name-only --diff-filter=ACMR 2>/dev/null || true
+  git diff --cached --name-only --diff-filter=ACMRD 2>/dev/null || true
 } | sort -u )
 
 if ! echo "$MODIFIED" | grep -qE "$PATTERNS"; then
@@ -30,15 +30,17 @@ if ! echo "$MODIFIED" | grep -qE "$PATTERNS"; then
 fi
 
 # Marker format (one line): <HEAD-SHA> <DIFF-HASH> <ISO-8601-UTC-timestamp>
-# DIFF-HASH = git hash-object --stdin < (git diff HEAD). Binding to the
-# diff content — not just HEAD — means any edit made after the reviewer
-# cleared invalidates the marker.
+# DIFF-HASH is computed by `scripts/reviewer-hash.sh --all`, which covers
+# tracked diffs, staged diffs, deletions, and untracked file contents.
+# Binding to the hash means any workspace edit made after the reviewer
+# cleared invalidates the marker before session stop.
 MARKER=".decode-reviewer-clean"
-if [ -f "$MARKER" ]; then
+HASH_SCRIPT="scripts/reviewer-hash.sh"
+if [ -f "$MARKER" ] && [ -x "$HASH_SCRIPT" ]; then
   MARKED_SHA=$(awk 'NR==1 {print $1}' "$MARKER" 2>/dev/null || echo "")
   MARKED_DIFF=$(awk 'NR==1 {print $2}' "$MARKER" 2>/dev/null || echo "")
   CURRENT_SHA=$(git rev-parse HEAD 2>/dev/null || echo "initial")
-  CURRENT_DIFF=$(git diff HEAD 2>/dev/null | git hash-object --stdin 2>/dev/null || echo "")
+  CURRENT_DIFF=$(bash "$HASH_SCRIPT" --all 2>/dev/null || echo "")
   if [ -n "$MARKED_SHA" ] && [ -n "$MARKED_DIFF" ] \
      && [ "$MARKED_SHA" = "$CURRENT_SHA" ] \
      && [ "$MARKED_DIFF" = "$CURRENT_DIFF" ]; then
